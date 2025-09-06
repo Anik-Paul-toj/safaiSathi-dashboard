@@ -658,20 +658,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Charts and activities */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Detection Performance chart */}
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Detection Performance</h3>
-            <BarChart3 className="h-5 w-5 text-gray-400" />
-          </div>
-          <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-            <div className="text-center">
-              <Trash2 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Garbage overflow detection metrics chart will be displayed here</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 gap-6">
 
         {/* Recent activities */}
         <div className="bg-white shadow rounded-lg p-6">
