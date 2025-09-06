@@ -135,6 +135,46 @@ export default function DashboardPage() {
       // Dynamic import for html2pdf
       const html2pdf = (await import('html2pdf.js')).default;
       
+      // Calculate real statistics from Firebase data
+      const totalDetections = recentActivities.length;
+      const averageConfidence = totalDetections > 0 
+        ? recentActivities.reduce((sum, result) => sum + result.confidence_score, 0) / totalDetections
+        : 0;
+      const maxConfidence = totalDetections > 0 
+        ? Math.max(...recentActivities.map(r => r.confidence_score))
+        : 0;
+      const minConfidence = totalDetections > 0 
+        ? Math.min(...recentActivities.map(r => r.confidence_score))
+        : 0;
+      
+      // Calculate overflow score (simplified calculation)
+      const overflowScore = totalDetections > 0 
+        ? (averageConfidence * 100 * totalDetections) / 100
+        : 0;
+      
+      // Calculate detection frequency (detections per hour based on time range)
+      const now = new Date();
+      const oldestDetection = totalDetections > 0 
+        ? new Date(recentActivities[recentActivities.length - 1].timestamp)
+        : now;
+      const timeDiffHours = (now.getTime() - oldestDetection.getTime()) / (1000 * 60 * 60);
+      const detectionFrequency = timeDiffHours > 0 ? (totalDetections / timeDiffHours).toFixed(1) : '0';
+      
+      // Get latest detection location
+      const latestDetection = totalDetections > 0 ? recentActivities[0] : null;
+      const latestStatus = latestDetection ? getStatusFromConfidence(latestDetection.confidence_score) : null;
+      
+      // Format timestamp for report
+      const reportDate = new Date().toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+      
       // Create municipal report HTML
       const reportHTML = `
         <!DOCTYPE html>
@@ -259,6 +299,11 @@ export default function DashboardPage() {
               font-size: 12px;
               color: #6b7280;
             }
+            .event-address {
+              font-size: 12px;
+              color: #6b7280;
+              margin-top: 5px;
+            }
             .recommendations {
               background: #fef3c7;
               padding: 20px;
@@ -303,7 +348,7 @@ export default function DashboardPage() {
           <div class="header">
             <div class="municipality-name">MUNICIPAL CORPORATION OF KOLKATA</div>
             <div class="report-title">GARBAGE OVERFLOW DETECTION REPORT</div>
-            <div class="report-date">Report Generated: September 6, 2025 at 18:52:17 IST</div>
+            <div class="report-date">Report Generated: ${reportDate} IST</div>
           </div>
 
           <div class="section">
@@ -311,19 +356,19 @@ export default function DashboardPage() {
             <div class="summary-grid">
               <div class="summary-item">
                 <div class="summary-label">Total Detections</div>
-                <div class="summary-value">2</div>
+                <div class="summary-value">${totalDetections}</div>
               </div>
               <div class="summary-item">
                 <div class="summary-label">Average Confidence</div>
-                <div class="summary-value">39.94%</div>
+                <div class="summary-value">${(averageConfidence * 100).toFixed(1)}%</div>
               </div>
               <div class="summary-item">
                 <div class="summary-label">Overflow Score</div>
-                <div class="summary-value">7.99</div>
+                <div class="summary-value">${overflowScore.toFixed(2)}</div>
               </div>
               <div class="summary-item">
                 <div class="summary-label">Detection Frequency</div>
-                <div class="summary-value">2/min</div>
+                <div class="summary-value">${detectionFrequency}/hour</div>
               </div>
             </div>
           </div>
@@ -331,56 +376,62 @@ export default function DashboardPage() {
           <div class="section">
             <div class="section-title">LOCATION INTELLIGENCE</div>
             <div class="location-info">
-              <div class="location-address">Detection Location</div>
-              <div>Nilgunj Road, Sodepur, Kamarhati, Barrackpore, North 24 Parganas, West Bengal, 700114, India</div>
+              <div class="location-address">Latest Detection Location</div>
+              <div>${latestDetection ? latestDetection.address : 'No detections available'}</div>
+              ${latestDetection ? `
               <div class="coordinates">
                 <div class="coord-item">
                   <span class="coord-label">Latitude:</span>
-                  <span class="coord-value">22.694976°</span>
+                  <span class="coord-value">${latestDetection.latitude.toFixed(6)}°</span>
                 </div>
                 <div class="coord-item">
                   <span class="coord-label">Longitude:</span>
-                  <span class="coord-value">88.379449°</span>
+                  <span class="coord-value">${latestDetection.longitude.toFixed(6)}°</span>
                 </div>
                 <div class="coord-item">
                   <span class="coord-label">GPS Accuracy:</span>
-                  <span class="coord-value">±73 meters</span>
+                  <span class="coord-value">${typeof latestDetection.accuracy === 'string' ? latestDetection.accuracy : `±${latestDetection.accuracy}m`}</span>
                 </div>
                 <div class="coord-item">
                   <span class="coord-label">Status:</span>
-                  <span class="coord-value">LOW OVERFLOW</span>
+                  <span class="coord-value">${latestStatus ? latestStatus.status : 'UNKNOWN'}</span>
                 </div>
               </div>
+              ` : ''}
             </div>
           </div>
 
           <div class="section">
             <div class="section-title">DETECTION EVENTS</div>
             <div class="detection-events">
-              <div class="event-item">
-                <div class="event-header">
-                  <div class="event-id">Detection #1</div>
-                  <div class="event-confidence">32.92%</div>
+              ${recentActivities.length > 0 ? recentActivities.map((detection, index) => `
+                <div class="event-item">
+                  <div class="event-header">
+                    <div class="event-id">Detection #${index + 1}</div>
+                    <div class="event-confidence">${(detection.confidence_score * 100).toFixed(1)}%</div>
+                  </div>
+                  <div class="event-timestamp">Timestamp: ${new Date(detection.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}</div>
+                  <div class="event-address">Location: ${detection.address}</div>
                 </div>
-                <div class="event-timestamp">Timestamp: 2025-09-06 18:52:07</div>
-              </div>
-              <div class="event-item">
-                <div class="event-header">
-                  <div class="event-id">Detection #2</div>
-                  <div class="event-confidence">46.97%</div>
-                </div>
-                <div class="event-timestamp">Timestamp: 2025-09-06 18:52:15</div>
-              </div>
+              `).join('') : '<div class="event-item"><div class="event-timestamp">No detection events found</div></div>'}
             </div>
           </div>
 
           <div class="section">
             <div class="section-title">RECOMMENDATIONS</div>
             <div class="recommendations">
-              <div class="recommendation-item">Schedule immediate collection for the detected overflow area</div>
-              <div class="recommendation-item">Continue monitoring as confidence increased from 32.92% to 46.97%</div>
-              <div class="recommendation-item">Include this location in regular collection schedule</div>
-              <div class="recommendation-item">Update municipal waste management database with new detection point</div>
+              ${totalDetections > 0 ? `
+                <div class="recommendation-item">Schedule immediate collection for detected overflow areas</div>
+                <div class="recommendation-item">Monitor confidence trends - current range: ${(minConfidence * 100).toFixed(1)}% to ${(maxConfidence * 100).toFixed(1)}%</div>
+                <div class="recommendation-item">Include detected locations in regular collection schedule</div>
+                <div class="recommendation-item">Update municipal waste management database with ${totalDetections} new detection point${totalDetections > 1 ? 's' : ''}</div>
+                ${averageConfidence > 0.6 ? '<div class="recommendation-item">High confidence detections require immediate attention</div>' : ''}
+                ${totalDetections > 5 ? '<div class="recommendation-item">Consider increasing collection frequency due to high detection count</div>' : ''}
+              ` : `
+                <div class="recommendation-item">No detections found - continue regular monitoring</div>
+                <div class="recommendation-item">Review detection system if no alerts received recently</div>
+                <div class="recommendation-item">Maintain current collection schedule</div>
+              `}
             </div>
           </div>
 
