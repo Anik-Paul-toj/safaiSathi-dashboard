@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { MapPin, Activity, TrendingUp, RefreshCw, Map, Satellite } from 'lucide-react';
-import { HeatmapPoint } from '@/types/heatmap';
+import { MapPin, Activity, TrendingUp, RefreshCw, Map, Satellite, AlertCircle } from 'lucide-react';
+import { ModelResult, ModelResultsResponse } from '@/types/garbage-detection';
+import { FirebaseService } from '@/services/firebaseService';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
@@ -25,14 +26,16 @@ const LayerGroup = dynamic(
   { ssr: false }
 );
 
-const HeatmapLayer = dynamic(
-  () => import('@/components/HeatmapLayer'),
+const GeodesicAreasLayer = dynamic(
+  () => import('@/components/GeodesicAreasLayer'),
   { ssr: false }
 );
 
 
-// Kolkata coordinates (center of the city)
-const KOLKATA_CENTER = [22.5726, 88.3639] as [number, number];
+
+
+// Default center coordinates (will be overridden by actual data bounds)
+const DEFAULT_CENTER = [22.5726, 88.3639] as [number, number];
 
 // Tile layer configurations
 const TILE_LAYERS = {
@@ -56,85 +59,128 @@ const TILE_LAYERS = {
   }
 };
 
-// Generate random heatmap data points around Kolkata
-const generateRandomHeatmapData = (): HeatmapPoint[] => {
-  const points: HeatmapPoint[] = [];
-  const numPoints = 50;
+// Function to get color name based on confidence score
+const getConfidenceLevel = (confidence: number): string => {
+  if (confidence >= 0.8) return 'High';
+  if (confidence >= 0.6) return 'Medium-High';
+  if (confidence >= 0.4) return 'Medium';
+  if (confidence >= 0.2) return 'Low';
+  return 'Very Low';
+};
+
+// Function to calculate map center from data points
+const calculateMapCenter = (results: ModelResult[]): [number, number] => {
+  if (results.length === 0) return DEFAULT_CENTER;
   
-  for (let i = 0; i < numPoints; i++) {
-    // Generate points within Kolkata's approximate boundaries
-    const lat = 22.5726 + (Math.random() - 0.5) * 0.3; // ±0.15 degrees
-    const lng = 88.3639 + (Math.random() - 0.5) * 0.3; // ±0.15 degrees
-    const intensity = Math.random() * 100; // Random intensity 0-100
-    
-    points.push({ lat, lng, intensity });
-  }
+  const validResults = results.filter(r => r.latitude && r.longitude && r.latitude !== 0 && r.longitude !== 0);
+  if (validResults.length === 0) return DEFAULT_CENTER;
   
-  return points;
+  const avgLat = validResults.reduce((sum, r) => sum + r.latitude, 0) / validResults.length;
+  const avgLng = validResults.reduce((sum, r) => sum + r.longitude, 0) / validResults.length;
+  
+  return [avgLat, avgLng];
 };
 
 type MapType = 'terrain' | 'satellite' | 'satelliteWithLabels';
 
 export default function HeatmapPage() {
-  const [heatmapData, setHeatmapData] = useState<HeatmapPoint[]>([]);
+  const [modelResults, setModelResults] = useState<ModelResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [mapType, setMapType] = useState<MapType>('terrain');
   const [showLabels, setShowLabels] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [totalDataPoints, setTotalDataPoints] = useState(0);
+  const [averageConfidence, setAverageConfidence] = useState(0);
+  const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_CENTER);
 
-  // Initialize heatmap data
+  // Auto-refresh data every 30 seconds to keep it live
   useEffect(() => {
-    const loadHeatmapData = () => {
+    const interval = setInterval(() => {
+      refreshData();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Initialize heatmap data from Firebase
+  useEffect(() => {
+    const loadHeatmapData = async () => {
       setIsLoading(true);
       setMapLoaded(false);
-      // Simulate API call delay
-      setTimeout(() => {
-        setHeatmapData(generateRandomHeatmapData());
+      setError(null);
+      
+      try {
+        const response: ModelResultsResponse = await FirebaseService.fetchModelResults();
+        setModelResults(response.results);
+        setTotalDataPoints(response.totalCount);
+        setAverageConfidence(response.averageConfidence);
+        
+        // Calculate map center from actual data
+        const center = calculateMapCenter(response.results);
+        setMapCenter(center);
+        
         setLastUpdated(new Date());
         setIsLoading(false);
         // Give map time to render
         setTimeout(() => setMapLoaded(true), 500);
-      }, 1000);
+      } catch (err) {
+        console.error('Error loading heatmap data:', err);
+        setError('Failed to load data from Firebase. Please try again.');
+        setIsLoading(false);
+      }
     };
 
     loadHeatmapData();
   }, []);
 
-  const refreshData = () => {
+  const refreshData = async () => {
     setIsLoading(true);
     setMapLoaded(false);
-    setTimeout(() => {
-      setHeatmapData(generateRandomHeatmapData());
+    setError(null);
+    
+    try {
+      const response: ModelResultsResponse = await FirebaseService.fetchModelResults();
+      setModelResults(response.results);
+      setTotalDataPoints(response.totalCount);
+      setAverageConfidence(response.averageConfidence);
+      
+      // Calculate map center from actual data
+      const center = calculateMapCenter(response.results);
+      setMapCenter(center);
+      
       setLastUpdated(new Date());
       setIsLoading(false);
       // Give map time to render
       setTimeout(() => setMapLoaded(true), 500);
-    }, 1000);
+    } catch (err) {
+      console.error('Error refreshing heatmap data:', err);
+      setError('Failed to refresh data from Firebase. Please try again.');
+      setIsLoading(false);
+    }
   };
 
   const stats = [
     {
       name: 'Total Data Points',
-      value: heatmapData.length.toString(),
+      value: totalDataPoints.toString(),
       icon: MapPin,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
     },
     {
       name: 'Average Intensity',
-      value: heatmapData.length > 0 
-        ? (heatmapData.reduce((sum, point) => sum + point.intensity, 0) / heatmapData.length).toFixed(1)
-        : '0',
+      value: averageConfidence.toFixed(2),
       icon: Activity,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
       name: 'Max Intensity',
-      value: heatmapData.length > 0 
-        ? Math.max(...heatmapData.map(point => point.intensity)).toFixed(1)
-        : '0',
+      value: modelResults.length > 0 
+        ? Math.max(...modelResults.map(result => result.confidence_score)).toFixed(2)
+        : '0.00',
       icon: TrendingUp,
       color: 'text-red-600',
       bgColor: 'bg-red-50',
@@ -146,9 +192,9 @@ export default function HeatmapPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Heatmap Analytics</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Garbage Detection Heatmap</h1>
           <p className="text-gray-600 mt-1">
-            Real-time waste collection intensity map for Kolkata
+            Live garbage detection intensity map from Firebase model results (auto-updates every 30s)
           </p>
         </div>
         <button
@@ -160,6 +206,17 @@ export default function HeatmapPage() {
           <span>Refresh Data</span>
         </button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center space-x-3">
+          <AlertCircle className="h-5 w-5 text-red-600" />
+          <div>
+            <h3 className="text-sm font-medium text-red-800">Error Loading Data</h3>
+            <p className="text-sm text-red-700 mt-1">{error}</p>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -181,9 +238,9 @@ export default function HeatmapPage() {
       {/* Map Container */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="p-6 border-b border-gray-200">
-          <h2 className="text-xl font-semibold text-gray-900">Kolkata Heatmap</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Garbage Detection Map</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Last updated: {lastUpdated.toLocaleTimeString()}
+            Last updated: {lastUpdated.toLocaleTimeString()} • {totalDataPoints} detection points from Firestore
           </p>
         </div>
         
@@ -192,7 +249,7 @@ export default function HeatmapPage() {
             <div className="h-full flex items-center justify-center bg-gray-50">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-                <p className="mt-4 text-gray-600">Loading heatmap data...</p>
+                <p className="mt-4 text-gray-600">Loading garbage detection data from Firebase...</p>
               </div>
             </div>
           ) : (
@@ -270,7 +327,7 @@ export default function HeatmapPage() {
                 </div>
 
                 <MapContainer
-                  center={KOLKATA_CENTER}
+                  center={mapCenter}
                   zoom={12}
                   style={{ 
                     height: '100%', 
@@ -314,22 +371,9 @@ export default function HeatmapPage() {
                     )}
                   </LayerGroup>
                   
-                  {/* Heatmap Layer */}
-                  {mapLoaded && (
-                    <HeatmapLayer
-                      points={heatmapData}
-                      radius={25}
-                      max={100}
-                      minOpacity={0.4}
-                      blur={20}
-                      gradient={{
-                        0.4: 'blue',
-                        0.6: 'cyan',
-                        0.7: 'lime',
-                        0.8: 'yellow',
-                        1.0: 'red'
-                      }}
-                    />
+                  {/* Geodesic Areas Layer */}
+                  {mapLoaded && modelResults.length > 0 && (
+                    <GeodesicAreasLayer results={modelResults} />
                   )}
                 </MapContainer>
               </div>
@@ -340,25 +384,43 @@ export default function HeatmapPage() {
 
       {/* Legend */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Heatmap Legend</h3>
-        <div className="flex items-center space-x-4">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Detection Intensity Legend</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-blue-500 rounded"></div>
-            <span className="text-sm text-gray-600">Low Intensity (0-40)</span>
+            <div className="w-4 h-4 bg-red-600 rounded"></div>
+            <span className="text-sm text-gray-600">High (80-100%)</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-yellow-500 rounded"></div>
-            <span className="text-sm text-gray-600">Medium Intensity (40-70)</span>
+            <div className="w-4 h-4 bg-orange-600 rounded"></div>
+            <span className="text-sm text-gray-600">Medium-High (60-80%)</span>
           </div>
           <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 bg-red-500 rounded"></div>
-            <span className="text-sm text-gray-600">High Intensity (70-100)</span>
+            <div className="w-4 h-4 bg-amber-500 rounded"></div>
+            <span className="text-sm text-gray-600">Medium (40-60%)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-lime-500 rounded"></div>
+            <span className="text-sm text-gray-600">Low (20-40%)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-green-600 rounded"></div>
+            <span className="text-sm text-gray-600">Very Low (0-20%)</span>
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-3">
-          The heatmap shows waste collection intensity across different areas of Kolkata. 
-          Red areas indicate high collection activity, while blue areas show lower activity.
+          The map shows garbage detection intensity levels from your Firebase data. 
+          Each colored circle represents a detection area with radius based on GPS accuracy (100-200m).
+          Red areas indicate high intensity detections, while green areas show lower intensity.
         </p>
+        <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+          <h4 className="text-sm font-medium text-gray-900 mb-2">Map Features:</h4>
+          <ul className="text-xs text-gray-600 space-y-1">
+            <li>• <strong>Colored Circles:</strong> Detection areas with intensity-based coloring</li>
+            <li>• <strong>Circle Size:</strong> Based on GPS accuracy (100-200m radius)</li>
+            <li>• <strong>Tooltips:</strong> Hover over circles to see confidence, accuracy, and address</li>
+            <li>• <strong>Popups:</strong> Click circles for detailed information</li>
+          </ul>
+        </div>
       </div>
     </div>
   );

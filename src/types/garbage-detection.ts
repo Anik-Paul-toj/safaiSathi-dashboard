@@ -161,3 +161,37 @@ export interface HeatmapFilters {
   maxIntensity?: number;
   area?: string;
 }
+
+// Firebase model results data types
+export interface ModelResult {
+  id: string;
+  latitude: number;
+  longitude: number;
+  confidence_score: number; // This is the calculated average from confidence_scores array
+  accuracy: number | string; // Can be number or string like "±78 meters"
+  address: string;
+  timestamp: string;
+  model_version?: string;
+  image_url?: string;
+}
+
+// Raw Firebase document structure
+export interface FirebaseModelResult {
+  id: string;
+  latitude: number;
+  longitude: number;
+  confidence_scores: number[]; // Array of confidence scores from Firebase
+  confidence_score?: number; // Optional single score fallback
+  accuracy: number;
+  address: string;
+  timestamp: string;
+  model_version?: string;
+  image_url?: string;
+}
+
+export interface ModelResultsResponse {
+  results: ModelResult[];
+  totalCount: number;
+  averageConfidence: number;
+  lastUpdated: string;
+}
