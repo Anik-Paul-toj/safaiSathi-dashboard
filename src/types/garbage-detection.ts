@@ -195,3 +195,23 @@ export interface ModelResultsResponse {
   averageConfidence: number;
   lastUpdated: string;
 }
+
+// Area-specific data types
+export interface AreaData {
+  area: string;
+  count: number;
+  latestDetection: string;
+}
+
+export interface AreaStats {
+  totalDetections: number;
+  averageConfidence: number;
+  maxConfidence: number;
+  minConfidence: number;
+  latestDetection: string;
+  status: {
+    status: string;
+    color: string;
+    bgColor: string;
+  };
+}

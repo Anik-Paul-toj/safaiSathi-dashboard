@@ -1,7 +1,7 @@
 'use client';
 
 import { 
-  Trash2, 
+  Trash2,
   MapPin, 
   Activity,
   BarChart3,
@@ -12,26 +12,13 @@ import {
   Recycle,
   AlertTriangle,
   FileText,
-  Download
+  Download,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import LocationIntelligence from '@/components/LocationIntelligence';
 
-const stats = [
-  {
-    name: 'Total Detections',
-    value: '2,847',
-    change: '+12.3%',
-    changeType: 'positive',
-    icon: Trash2,
-  },
-  {
-    name: 'Detection Frequency',
-    value: '2/min',
-    change: '+0.5',
-    changeType: 'positive',
-    icon: Activity,
-  },
-];
 
 const recentActivities = [
   {
@@ -78,6 +65,24 @@ const recentActivities = [
 
 export default function DashboardPage() {
   const reportRef = useRef<HTMLDivElement>(null);
+  
+  // Pagination state for Recent Detection Events
+  const [currentPage, setCurrentPage] = useState(1);
+  const eventsPerPage = 2;
+  
+  // Calculate pagination
+  const totalPages = Math.ceil(recentActivities.length / eventsPerPage);
+  const startIndex = (currentPage - 1) * eventsPerPage;
+  const endIndex = startIndex + eventsPerPage;
+  const currentEvents = recentActivities.slice(startIndex, endIndex);
+  
+  const handlePreviousPage = () => {
+    setCurrentPage(prev => Math.max(prev - 1, 1));
+  };
+  
+  const handleNextPage = () => {
+    setCurrentPage(prev => Math.min(prev + 1, totalPages));
+  };
 
   const handleExportPDF = async () => {
     try {
@@ -384,48 +389,6 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      {/* Stats grid */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <div
-            key={stat.name}
-            className="bg-white overflow-hidden shadow rounded-lg"
-          >
-            <div className="p-5">
-              <div className="flex items-center">
-                <div className="flex-shrink-0">
-                  <stat.icon className="h-6 w-6 text-gray-400" />
-                </div>
-                <div className="ml-5 w-0 flex-1">
-                  <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
-                      {stat.name}
-                    </dt>
-                    <dd className="flex items-baseline">
-                      <div className="text-2xl font-semibold text-gray-900">
-                        {stat.value}
-                      </div>
-                      {stat.change && (
-                        <div
-                          className={`ml-2 flex items-baseline text-sm font-semibold ${
-                            stat.changeType === 'positive'
-                              ? 'text-green-600'
-                              : stat.changeType === 'negative'
-                              ? 'text-red-600'
-                              : 'text-gray-600'
-                          }`}
-                        >
-                          {stat.change}
-                        </div>
-                      )}
-                    </dd>
-                  </dl>
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
 
       {/* Official Detection Report */}
       <div ref={reportRef} className="bg-white shadow-lg rounded-lg overflow-hidden">
@@ -452,90 +415,9 @@ export default function DashboardPage() {
         </div>
 
         <div className="p-6">
-          {/* Executive Summary */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2 text-blue-600" />
-              Executive Summary
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-blue-50 p-4 rounded-lg border-l-4 border-blue-500">
-                <div className="text-sm text-blue-600 font-medium">Total Detections</div>
-                <div className="text-2xl font-bold text-blue-900">2</div>
-                <div className="text-xs text-blue-600">Current session</div>
-              </div>
-              <div className="bg-green-50 p-4 rounded-lg border-l-4 border-green-500">
-                <div className="text-sm text-green-600 font-medium">Average Confidence</div>
-                <div className="text-2xl font-bold text-green-900">39.94%</div>
-                <div className="text-xs text-green-600">Detection accuracy</div>
-              </div>
-              <div className="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500">
-                <div className="text-sm text-yellow-600 font-medium">Overflow Score</div>
-                <div className="text-2xl font-bold text-yellow-900">7.99</div>
-                <div className="text-xs text-yellow-600">Risk assessment</div>
-              </div>
-              <div className="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
-                <div className="text-sm text-purple-600 font-medium">Detection Frequency</div>
-                <div className="text-2xl font-bold text-purple-900">2/min</div>
-                <div className="text-xs text-purple-600">Activity rate</div>
-              </div>
-            </div>
-          </div>
 
           {/* Location Intelligence */}
-          <div className="mb-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <MapPin className="h-5 w-5 mr-2 text-green-600" />
-              Location Intelligence
-            </h3>
-            <div className="bg-gray-50 p-6 rounded-lg">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Detection Location</h4>
-                  <p className="text-sm text-gray-700 leading-relaxed">
-                    Nilgunj Road, Sodepur, Kamarhati, Barrackpore, North 24 Parganas, West Bengal, 700114, India
-                  </p>
-                  <div className="mt-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Latitude:</span>
-                      <span className="font-mono font-medium">22.694976°</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Longitude:</span>
-                      <span className="font-mono font-medium">88.379449°</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">GPS Accuracy:</span>
-                      <span className="font-medium">±73 meters</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-500">Location Source:</span>
-                      <span className="font-medium text-green-600">GPS</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Risk Assessment</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                      <span className="text-sm font-medium text-gray-700">Current Status</span>
-                      <span className="px-3 py-1 bg-green-100 text-green-800 text-sm font-medium rounded-full">
-                        LOW OVERFLOW
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                      <span className="text-sm font-medium text-gray-700">Confidence Range</span>
-                      <span className="text-sm font-medium text-blue-800">32.92% - 46.97%</span>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                      <span className="text-sm font-medium text-gray-700">Detection Pattern</span>
-                      <span className="text-sm font-medium text-yellow-800">2 in 8 seconds</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <LocationIntelligence className="mb-8" />
 
           {/* Detection Analytics */}
           <div className="mb-8">
@@ -543,64 +425,68 @@ export default function DashboardPage() {
               <Activity className="h-5 w-5 mr-2 text-purple-600" />
               Detection Analytics
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h4 className="font-medium text-gray-900 mb-4">Confidence Metrics</h4>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Maximum Confidence</span>
-                    <div className="flex items-center">
-                      <div className="w-20 bg-gray-200 rounded-full h-2 mr-3">
-                        <div className="bg-green-500 h-2 rounded-full" style={{width: '46.97%'}}></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">46.97%</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Average Confidence</span>
-                    <div className="flex items-center">
-                      <div className="w-20 bg-gray-200 rounded-full h-2 mr-3">
-                        <div className="bg-blue-500 h-2 rounded-full" style={{width: '39.94%'}}></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">39.94%</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Minimum Confidence</span>
-                    <div className="flex items-center">
-                      <div className="w-20 bg-gray-200 rounded-full h-2 mr-3">
-                        <div className="bg-yellow-500 h-2 rounded-full" style={{width: '32.92%'}}></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-900">32.92%</span>
-                    </div>
+            <div className="bg-white border border-gray-200 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium text-gray-900">Recent Detection Events</h4>
+                  <div className="flex items-center space-x-2 text-sm text-gray-500">
+                    <span>Page {currentPage} of {totalPages}</span>
                   </div>
                 </div>
-              </div>
-              <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <h4 className="font-medium text-gray-900 mb-4">Recent Detection Events</h4>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Detection #1</p>
-                      <p className="text-xs text-gray-500">2025-09-06 18:52:07</p>
+                  {currentEvents.map((activity, index) => (
+                    <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {activity.user} - {activity.action}
+                        </p>
+                        <p className="text-xs text-gray-500">{activity.time}</p>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-medium text-gray-900">{activity.confidence}</span>
+                        <p className="text-xs text-gray-500">Confidence</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm font-medium text-gray-900">32.92%</span>
-                      <p className="text-xs text-gray-500">Confidence</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">Detection #2</p>
-                      <p className="text-xs text-gray-500">2025-09-06 18:52:15</p>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-medium text-gray-900">46.97%</span>
-                      <p className="text-xs text-gray-500">Confidence</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              </div>
+                
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={currentPage === 1}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Previous
+                    </button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-2 text-sm font-medium rounded-lg ${
+                            currentPage === page
+                              ? 'bg-blue-600 text-white'
+                              : 'text-gray-500 hover:bg-gray-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </button>
+                  </div>
+                )}
             </div>
           </div>
 
