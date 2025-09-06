@@ -1,6 +1,6 @@
 'use client';
 
-import { Menu, Bell, Search, User } from 'lucide-react';
+import { Menu, Bell, Search } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 interface HeaderProps {

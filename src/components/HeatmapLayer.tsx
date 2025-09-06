@@ -21,7 +21,7 @@ export default function HeatmapLayer({
   gradient 
 }: HeatmapLayerProps) {
   const map = useMap();
-  const heatmapLayerRef = useRef<any>(null);
+  const heatmapLayerRef = useRef<L.Layer | null>(null);
 
   useEffect(() => {
     if (!map || !points.length) return;
@@ -46,7 +46,7 @@ export default function HeatmapLayer({
         minOpacity,
         blur,
         gradient
-      });
+      }) as L.Layer;
 
       // Store reference
       heatmapLayerRef.current = heatmapLayer;

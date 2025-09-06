@@ -5,20 +5,17 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  Menu, 
   X, 
   Home, 
   Users, 
   BarChart3, 
   Settings, 
   FileText, 
-  Bell,
   LogOut,
   ChevronLeft,
   ChevronRight,
   MapPin,
   Trash2,
-  Recycle,
   Activity
 } from 'lucide-react';
 

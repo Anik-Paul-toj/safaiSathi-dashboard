@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Users, Plus, Search, Filter, Truck, MapPin, Clock, Eye, Edit, Trash2 } from 'lucide-react';
+import { Plus, Search, Filter, MapPin, Eye, Edit, Trash2 } from 'lucide-react';
 
 interface StaffMember {
   id: number;

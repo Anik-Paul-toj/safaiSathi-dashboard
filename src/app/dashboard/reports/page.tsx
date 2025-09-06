@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { FileText, Download, Calendar, Users, Trash2, TrendingUp, BarChart3, Printer } from 'lucide-react';
+import { FileText, Download, BarChart3, Users } from 'lucide-react';
 
 interface ReportData {
   id: string;

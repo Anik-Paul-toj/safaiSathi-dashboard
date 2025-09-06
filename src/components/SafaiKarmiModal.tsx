@@ -142,7 +142,7 @@ export default function SafaiKarmiModal({
   if (!isOpen) return null;
 
   const isViewMode = mode === 'view';
-  const isEditMode = mode === 'edit';
+  // const isEditMode = mode === 'edit';
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
