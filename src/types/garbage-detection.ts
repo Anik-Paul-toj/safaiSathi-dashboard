@@ -203,7 +203,7 @@ export interface AreaData {
   latestDetection: string;
 }
 
-export interface AreaStats {
+export interface DetailedAreaStats {
   totalDetections: number;
   averageConfidence: number;
   maxConfidence: number;

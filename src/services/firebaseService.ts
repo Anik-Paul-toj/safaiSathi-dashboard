@@ -197,8 +197,7 @@ export class FirebaseService {
    * Fetch model results with pagination
    */
   static async fetchModelResultsPaginated(
-    pageSize: number = 100,
-    lastDoc?: QueryDocumentSnapshot<DocumentData>
+    pageSize: number = 100
   ): Promise<ModelResultsResponse> {
     try {
       const modelResultsRef = collection(db, 'model_results');
