@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Users, Plus, Search, Filter, MapPin, Phone, User, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { SafaiKarmi } from '@/types/staff';
+import SafaiKarmiModal from '@/components/SafaiKarmiModal';
 
 // Hardcoded safai karmi data
 const safaiKarmis: SafaiKarmi[] = [
@@ -99,9 +100,13 @@ const safaiKarmis: SafaiKarmi[] = [
 export default function StaffPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
+  const [karmis, setKarmis] = useState<SafaiKarmi[]>(safaiKarmis);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
+  const [selectedKarmi, setSelectedKarmi] = useState<SafaiKarmi | null>(null);
 
   // Filter safai karmis based on search and status
-  const filteredKarmis = safaiKarmis.filter(karmi => {
+  const filteredKarmis = karmis.filter(karmi => {
     const matchesSearch = karmi.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          karmi.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          karmi.workingArea.toLowerCase().includes(searchTerm.toLowerCase());
@@ -110,10 +115,10 @@ export default function StaffPage() {
   });
 
   // Calculate stats
-  const totalKarmis = safaiKarmis.length;
-  const activeKarmis = safaiKarmis.filter(k => k.status === 'Active').length;
-  const onLeaveKarmis = safaiKarmis.filter(k => k.status === 'On Leave').length;
-  const totalCollections = safaiKarmis.reduce((sum, k) => sum + k.totalCollections, 0);
+  const totalKarmis = karmis.length;
+  const activeKarmis = karmis.filter(k => k.status === 'Active').length;
+  const onLeaveKarmis = karmis.filter(k => k.status === 'On Leave').length;
+  const totalCollections = karmis.reduce((sum, k) => sum + k.totalCollections, 0);
 
   const stats = [
     {
@@ -165,6 +170,63 @@ export default function StaffPage() {
     return 'text-red-600';
   };
 
+  // Modal handlers
+  const handleAddKarmi = () => {
+    setModalMode('add');
+    setSelectedKarmi(null);
+    setIsModalOpen(true);
+  };
+
+  const handleEditKarmi = (karmi: SafaiKarmi) => {
+    setModalMode('edit');
+    setSelectedKarmi(karmi);
+    setIsModalOpen(true);
+  };
+
+  const handleViewKarmi = (karmi: SafaiKarmi) => {
+    setModalMode('view');
+    setSelectedKarmi(karmi);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedKarmi(null);
+  };
+
+  // Generate new ID for new karmi
+  const generateNewId = () => {
+    if (karmis.length === 0) return 'SK001';
+    const maxId = Math.max(...karmis.map(k => parseInt(k.id.replace('SK', ''))));
+    return `SK${String(maxId + 1).padStart(3, '0')}`;
+  };
+
+  // Save new karmi
+  const handleSaveKarmi = (karmiData: Omit<SafaiKarmi, 'id'>) => {
+    const newKarmi: SafaiKarmi = {
+      ...karmiData,
+      id: generateNewId(),
+      lastActive: 'Just now'
+    };
+    setKarmis(prev => [...prev, newKarmi]);
+  };
+
+  // Update existing karmi
+  const handleUpdateKarmi = (id: string, karmiData: Omit<SafaiKarmi, 'id'>) => {
+    setKarmis(prev => prev.map(k => 
+      k.id === id 
+        ? { ...karmiData, id, lastActive: 'Just now' }
+        : k
+    ));
+  };
+
+  // Remove karmi
+  const handleRemoveKarmi = (id: string) => {
+    if (window.confirm('Are you sure you want to remove this safai karmi?')) {
+      setKarmis(prev => prev.filter(k => k.id !== id));
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page header */}
@@ -175,7 +237,10 @@ export default function StaffPage() {
             Manage and monitor waste collection workers across Kolkata
           </p>
         </div>
-        <button className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+        <button 
+          onClick={handleAddKarmi}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
           <Plus className="h-4 w-4 mr-2" />
           Add Safai Karmi
         </button>
@@ -290,13 +355,22 @@ export default function StaffPage() {
                     <p className="text-sm text-gray-500">Joined: {new Date(karmi.joinDate).toLocaleDateString()}</p>
                   </div>
                   <div className="flex space-x-2">
-                    <button className="text-indigo-600 hover:text-indigo-900 text-sm font-medium">
+                    <button 
+                      onClick={() => handleEditKarmi(karmi)}
+                      className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
+                    >
                       Edit
                     </button>
-                    <button className="text-green-600 hover:text-green-900 text-sm font-medium">
+                    <button 
+                      onClick={() => handleViewKarmi(karmi)}
+                      className="text-green-600 hover:text-green-900 text-sm font-medium"
+                    >
                       View Details
                     </button>
-                    <button className="text-red-600 hover:text-red-900 text-sm font-medium">
+                    <button 
+                      onClick={() => handleRemoveKarmi(karmi.id)}
+                      className="text-red-600 hover:text-red-900 text-sm font-medium"
+                    >
                       Remove
                     </button>
                   </div>
@@ -314,6 +388,16 @@ export default function StaffPage() {
           </div>
         )}
       </div>
+
+      {/* Modal */}
+      <SafaiKarmiModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        onSave={handleSaveKarmi}
+        onUpdate={handleUpdateKarmi}
+        karmi={selectedKarmi}
+        mode={modalMode}
+      />
     </div>
   );
 }
