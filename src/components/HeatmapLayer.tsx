@@ -40,13 +40,21 @@ export default function HeatmapLayer({
       ]);
 
       // Create heatmap layer
-      const heatmapLayer = (L as any).heatLayer(heatmapPoints, {
+      const heatmapLayer = (L as unknown as { 
+        heatLayer: (points: number[][], options: {
+          radius: number;
+          max: number;
+          minOpacity: number;
+          blur: number;
+          gradient?: Record<number, string>;
+        }) => L.Layer 
+      }).heatLayer(heatmapPoints, {
         radius,
         max,
         minOpacity,
         blur,
         gradient
-      }) as L.Layer;
+      });
 
       // Store reference
       heatmapLayerRef.current = heatmapLayer;
@@ -56,7 +64,7 @@ export default function HeatmapLayer({
 
       // Fit map to show all points if there are points
       if (points.length > 0) {
-        const group = new L.featureGroup();
+        const group = L.featureGroup();
         points.forEach(point => {
           group.addLayer(L.marker([point.lat, point.lng]));
         });

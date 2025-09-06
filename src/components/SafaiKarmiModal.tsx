@@ -42,6 +42,7 @@ export default function SafaiKarmiModal({
     workingArea: '',
     status: 'Active' as 'Active' | 'On Leave' | 'Inactive',
     joinDate: '',
+    lastActive: new Date().toISOString(),
     totalCollections: 0,
     rating: 5
   });
@@ -58,6 +59,7 @@ export default function SafaiKarmiModal({
           workingArea: karmi.workingArea,
           status: karmi.status,
           joinDate: karmi.joinDate,
+          lastActive: karmi.lastActive,
           totalCollections: karmi.totalCollections,
           rating: karmi.rating
         });
@@ -69,6 +71,7 @@ export default function SafaiKarmiModal({
           workingArea: '',
           status: 'Active',
           joinDate: new Date().toISOString().split('T')[0],
+          lastActive: new Date().toISOString(),
           totalCollections: 0,
           rating: 5
         });
