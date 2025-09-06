@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { HeatmapPoint, HeatmapConfig } from '@/types/heatmap';
@@ -21,32 +21,58 @@ export default function HeatmapLayer({
   gradient 
 }: HeatmapLayerProps) {
   const map = useMap();
+  const heatmapLayerRef = useRef<any>(null);
 
   useEffect(() => {
     if (!map || !points.length) return;
 
-    // Convert points to the format expected by leaflet.heat
-    const heatmapPoints = points.map(point => [
-      point.lat,
-      point.lng,
-      point.intensity / max // Normalize intensity
-    ]);
+    // Remove existing heatmap layer if it exists
+    if (heatmapLayerRef.current) {
+      map.removeLayer(heatmapLayerRef.current);
+    }
 
-    // Create heatmap layer
-    const heatmapLayer = (L as any).heatLayer(heatmapPoints, {
-      radius,
-      max,
-      minOpacity,
-      blur,
-      gradient
-    });
+    try {
+      // Convert points to the format expected by leaflet.heat
+      const heatmapPoints = points.map(point => [
+        point.lat,
+        point.lng,
+        point.intensity / max // Normalize intensity
+      ]);
 
-    // Add to map
-    heatmapLayer.addTo(map);
+      // Create heatmap layer
+      const heatmapLayer = (L as any).heatLayer(heatmapPoints, {
+        radius,
+        max,
+        minOpacity,
+        blur,
+        gradient
+      });
+
+      // Store reference
+      heatmapLayerRef.current = heatmapLayer;
+
+      // Add to map
+      heatmapLayer.addTo(map);
+
+      // Fit map to show all points if there are points
+      if (points.length > 0) {
+        const group = new L.featureGroup();
+        points.forEach(point => {
+          group.addLayer(L.marker([point.lat, point.lng]));
+        });
+        map.fitBounds(group.getBounds().pad(0.1));
+      }
+
+    } catch (error) {
+      console.error('Error creating heatmap layer:', error);
+    }
 
     // Cleanup function
     return () => {
-      map.removeLayer(heatmapLayer);
+      if (heatmapLayerRef.current) {
+        map.removeLayer(heatmapLayerRef.current);
+        heatmapLayerRef.current = null;
+      }
     };
   }, [map, points, radius, max, minOpacity, blur, gradient]);
 

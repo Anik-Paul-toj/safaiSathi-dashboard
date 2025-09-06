@@ -5,6 +5,10 @@ import dynamic from 'next/dynamic';
 import { MapPin, Activity, TrendingUp, RefreshCw } from 'lucide-react';
 import { HeatmapPoint } from '@/types/heatmap';
 
+// Import Leaflet CSS
+import 'leaflet/dist/leaflet.css';
+import '@/styles/leaflet.css';
+
 // Dynamically import the map component to avoid SSR issues
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
@@ -45,17 +49,21 @@ const generateRandomHeatmapData = (): HeatmapPoint[] => {
 export default function HeatmapPage() {
   const [heatmapData, setHeatmapData] = useState<HeatmapPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   // Initialize heatmap data
   useEffect(() => {
     const loadHeatmapData = () => {
       setIsLoading(true);
+      setMapLoaded(false);
       // Simulate API call delay
       setTimeout(() => {
         setHeatmapData(generateRandomHeatmapData());
         setLastUpdated(new Date());
         setIsLoading(false);
+        // Give map time to render
+        setTimeout(() => setMapLoaded(true), 500);
       }, 1000);
     };
 
@@ -64,10 +72,13 @@ export default function HeatmapPage() {
 
   const refreshData = () => {
     setIsLoading(true);
+    setMapLoaded(false);
     setTimeout(() => {
       setHeatmapData(generateRandomHeatmapData());
       setLastUpdated(new Date());
       setIsLoading(false);
+      // Give map time to render
+      setTimeout(() => setMapLoaded(true), 500);
     }, 1000);
   };
 
@@ -145,43 +156,75 @@ export default function HeatmapPage() {
           </p>
         </div>
         
-        <div className="h-96 w-full">
+        <div className="h-96 w-full relative overflow-hidden rounded-b-lg bg-gray-100">
           {isLoading ? (
-            <div className="h-full flex items-center justify-center">
+            <div className="h-full flex items-center justify-center bg-gray-50">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
                 <p className="mt-4 text-gray-600">Loading heatmap data...</p>
               </div>
             </div>
           ) : (
-            <div className="h-full">
-              <MapContainer
-                center={KOLKATA_CENTER}
-                zoom={12}
-                style={{ height: '100%', width: '100%' }}
-                className="z-0"
-              >
-                <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                />
-                
-                {/* Heatmap Layer */}
-                <HeatmapLayer
-                  points={heatmapData}
-                  radius={20}
-                  max={100}
-                  minOpacity={0.3}
-                  blur={15}
-                  gradient={{
-                    0.4: 'blue',
-                    0.6: 'cyan',
-                    0.7: 'lime',
-                    0.8: 'yellow',
-                    1.0: 'red'
+            <div className="h-full w-full relative">
+              {/* Map Loading Overlay */}
+              {!mapLoaded && (
+                <div className="absolute inset-0 map-loading-overlay flex items-center justify-center z-10 rounded-b-lg">
+                  <div className="text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-600">Rendering map...</p>
+                  </div>
+                </div>
+              )}
+              
+              <div className="absolute inset-0 bg-gray-100 rounded-b-lg">
+                <MapContainer
+                  center={KOLKATA_CENTER}
+                  zoom={12}
+                  style={{ 
+                    height: '100%', 
+                    width: '100%',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    zIndex: 1
                   }}
-                />
-              </MapContainer>
+                  className="rounded-b-lg"
+                  zoomControl={true}
+                  scrollWheelZoom={true}
+                  doubleClickZoom={true}
+                  dragging={true}
+                  touchZoom={true}
+                  whenReady={() => {
+                    // Map is ready, but give it a moment to fully render
+                    setTimeout(() => setMapLoaded(true), 300);
+                  }}
+                >
+                  <TileLayer
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    maxZoom={19}
+                    minZoom={10}
+                  />
+                  
+                  {/* Heatmap Layer */}
+                  {mapLoaded && (
+                    <HeatmapLayer
+                      points={heatmapData}
+                      radius={25}
+                      max={100}
+                      minOpacity={0.4}
+                      blur={20}
+                      gradient={{
+                        0.4: 'blue',
+                        0.6: 'cyan',
+                        0.7: 'lime',
+                        0.8: 'yellow',
+                        1.0: 'red'
+                      }}
+                    />
+                  )}
+                </MapContainer>
+              </div>
             </div>
           )}
         </div>
