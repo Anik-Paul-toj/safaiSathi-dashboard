@@ -15,7 +15,11 @@ import {
   Bell,
   LogOut,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Truck,
+  MapPin,
+  Trash2,
+  Recycle
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -25,10 +29,12 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Users', href: '/dashboard/users', icon: Users },
-  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
+  { name: 'Collections', href: '/dashboard/collections', icon: Trash2 },
+  { name: 'Routes', href: '/dashboard/routes', icon: MapPin },
+  { name: 'Vehicles', href: '/dashboard/vehicles', icon: Truck },
+  { name: 'Staff', href: '/dashboard/staff', icon: Users },
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
-  { name: 'Notifications', href: '/dashboard/notifications', icon: Bell },
+  { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 

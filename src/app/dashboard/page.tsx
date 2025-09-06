@@ -1,79 +1,82 @@
 'use client';
 
 import { 
-  Users, 
+  Trash2, 
   TrendingUp, 
-  DollarSign, 
+  MapPin, 
   Activity,
   BarChart3,
   Calendar,
   Clock,
-  CheckCircle
+  CheckCircle,
+  Truck,
+  Recycle,
+  AlertTriangle
 } from 'lucide-react';
 
 const stats = [
   {
-    name: 'Total Users',
-    value: '2,345',
-    change: '+12%',
-    changeType: 'positive',
-    icon: Users,
-  },
-  {
-    name: 'Revenue',
-    value: '$45,231',
+    name: 'Total Collections',
+    value: '1,247',
     change: '+8.2%',
     changeType: 'positive',
-    icon: DollarSign,
+    icon: Trash2,
   },
   {
-    name: 'Active Sessions',
-    value: '1,234',
-    change: '+5.4%',
+    name: 'Tons Collected',
+    value: '45.2',
+    change: '+12.5%',
+    changeType: 'positive',
+    icon: TrendingUp,
+  },
+  {
+    name: 'Active Routes',
+    value: '23',
+    change: '+2',
+    changeType: 'positive',
+    icon: MapPin,
+  },
+  {
+    name: 'Collection Rate',
+    value: '94.2%',
+    change: '+1.8%',
     changeType: 'positive',
     icon: Activity,
-  },
-  {
-    name: 'Conversion Rate',
-    value: '3.2%',
-    change: '-2.1%',
-    changeType: 'negative',
-    icon: TrendingUp,
   },
 ];
 
 const recentActivities = [
   {
     id: 1,
-    user: 'John Doe',
-    action: 'Created new account',
+    user: 'Route 5 - Sector A',
+    action: 'Collection completed',
     time: '2 minutes ago',
     icon: CheckCircle,
     iconColor: 'text-green-500',
   },
   {
     id: 2,
-    user: 'Jane Smith',
-    action: 'Updated profile',
-    time: '5 minutes ago',
+    user: 'Route 12 - Sector B',
+    action: 'Collection in progress',
+    time: '15 minutes ago',
     icon: Clock,
     iconColor: 'text-blue-500',
   },
   {
     id: 3,
-    user: 'Mike Johnson',
-    action: 'Completed payment',
-    time: '10 minutes ago',
+    user: 'Route 8 - Sector C',
+    action: 'Collection completed',
+    time: '1 hour ago',
     icon: CheckCircle,
     iconColor: 'text-green-500',
   },
   {
     id: 4,
-    user: 'Sarah Wilson',
-    action: 'Uploaded document',
-    time: '15 minutes ago',
-    icon: Clock,
-    iconColor: 'text-blue-500',
+    user: 'Route 3 - Sector D',
+    action: 'Missed collection - rescheduled',
+    time: '2 hours ago',
+    icon: AlertTriangle,
+    iconColor: 'text-yellow-500',
   },
 ];
 
@@ -82,9 +85,9 @@ export default function DashboardPage() {
     <div className="space-y-6">
       {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Garbage Management Dashboard</h1>
         <p className="mt-1 text-sm text-gray-500">
-          Welcome back! Here's what's happening with your account today.
+          Monitor waste collection operations and track municipality performance.
         </p>
       </div>
 
@@ -129,16 +132,16 @@ export default function DashboardPage() {
 
       {/* Charts and activities */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Chart placeholder */}
+        {/* Collection chart */}
         <div className="bg-white shadow rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Analytics Overview</h3>
+            <h3 className="text-lg font-medium text-gray-900">Collection Performance</h3>
             <BarChart3 className="h-5 w-5 text-gray-400" />
           </div>
           <div className="h-64 flex items-center justify-center bg-gray-50 rounded-lg">
             <div className="text-center">
-              <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">Chart will be displayed here</p>
+              <Truck className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+              <p className="text-sm text-gray-500">Collection metrics chart will be displayed here</p>
             </div>
           </div>
         </div>
@@ -146,7 +149,7 @@ export default function DashboardPage() {
         {/* Recent activities */}
         <div className="bg-white shadow rounded-lg p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-gray-900">Recent Activities</h3>
+            <h3 className="text-lg font-medium text-gray-900">Collection Activities</h3>
             <Calendar className="h-5 w-5 text-gray-400" />
           </div>
           <div className="flow-root">
@@ -199,16 +202,16 @@ export default function DashboardPage() {
           <button className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
             <div>
               <span className="rounded-lg inline-flex p-3 bg-indigo-50 text-indigo-700 ring-4 ring-white">
-                <Users className="h-6 w-6" />
+                <Truck className="h-6 w-6" />
               </span>
             </div>
             <div className="mt-8">
               <h3 className="text-lg font-medium">
                 <span className="absolute inset-0" aria-hidden="true" />
-                Add User
+                Schedule Collection
               </h3>
               <p className="mt-2 text-sm text-gray-500">
-                Create a new user account
+                Plan new collection route
               </p>
             </div>
           </button>
@@ -216,16 +219,16 @@ export default function DashboardPage() {
           <button className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
             <div>
               <span className="rounded-lg inline-flex p-3 bg-green-50 text-green-700 ring-4 ring-white">
-                <BarChart3 className="h-6 w-6" />
+                <Recycle className="h-6 w-6" />
               </span>
             </div>
             <div className="mt-8">
               <h3 className="text-lg font-medium">
                 <span className="absolute inset-0" aria-hidden="true" />
-                Generate Report
+                Waste Report
               </h3>
               <p className="mt-2 text-sm text-gray-500">
-                Create analytics report
+                Generate collection report
               </p>
             </div>
           </button>
@@ -233,16 +236,16 @@ export default function DashboardPage() {
           <button className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
             <div>
               <span className="rounded-lg inline-flex p-3 bg-yellow-50 text-yellow-700 ring-4 ring-white">
-                <Calendar className="h-6 w-6" />
+                <MapPin className="h-6 w-6" />
               </span>
             </div>
             <div className="mt-8">
               <h3 className="text-lg font-medium">
                 <span className="absolute inset-0" aria-hidden="true" />
-                Schedule Event
+                Route Management
               </h3>
               <p className="mt-2 text-sm text-gray-500">
-                Plan a new event
+                Manage collection routes
               </p>
             </div>
           </button>
@@ -250,16 +253,16 @@ export default function DashboardPage() {
           <button className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-indigo-500 rounded-lg border border-gray-200 hover:border-gray-300">
             <div>
               <span className="rounded-lg inline-flex p-3 bg-purple-50 text-purple-700 ring-4 ring-white">
-                <Activity className="h-6 w-6" />
+                <AlertTriangle className="h-6 w-6" />
               </span>
             </div>
             <div className="mt-8">
               <h3 className="text-lg font-medium">
                 <span className="absolute inset-0" aria-hidden="true" />
-                View Analytics
+                Report Issue
               </h3>
               <p className="mt-2 text-sm text-gray-500">
-                Check detailed analytics
+                Report collection problems
               </p>
             </div>
           </button>
