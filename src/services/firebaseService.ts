@@ -67,11 +67,11 @@ export class FirebaseService {
    */
   static async fetchModelResultsPaginated(
     pageSize: number = 100,
-    lastDoc?: any
+    lastDoc?: QueryDocumentSnapshot<DocumentData>
   ): Promise<ModelResultsResponse> {
     try {
       const modelResultsRef = collection(db, 'model_results');
-      let q = query(
+      const q = query(
         modelResultsRef, 
         orderBy('createdAt', 'desc'),
         limit(pageSize)

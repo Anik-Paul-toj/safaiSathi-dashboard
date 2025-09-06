@@ -59,14 +59,6 @@ const TILE_LAYERS = {
   }
 };
 
-// Function to get color name based on confidence score
-const getConfidenceLevel = (confidence: number): string => {
-  if (confidence >= 0.8) return 'High';
-  if (confidence >= 0.6) return 'Medium-High';
-  if (confidence >= 0.4) return 'Medium';
-  if (confidence >= 0.2) return 'Low';
-  return 'Very Low';
-};
 
 // Function to calculate map center from data points
 const calculateMapCenter = (results: ModelResult[]): [number, number] => {

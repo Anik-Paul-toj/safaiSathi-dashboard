@@ -2,7 +2,6 @@
 
 import { 
   Trash2, 
-  TrendingUp, 
   MapPin, 
   Activity,
   BarChart3,
