@@ -9,7 +9,6 @@ import {
   Home, 
   Users, 
   Settings, 
-  FileText, 
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -25,7 +24,6 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Heatmap', href: '/dashboard/heatmap', icon: Activity },
   { name: 'Staff', href: '/dashboard/staff', icon: Users },
-  { name: 'Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
