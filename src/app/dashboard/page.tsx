@@ -16,59 +16,105 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import LocationIntelligence from '@/components/LocationIntelligence';
+import { FirebaseService } from '@/services/firebaseService';
+import { ModelResult } from '@/types/garbage-detection';
 
 
-const recentActivities = [
-  {
-    id: 1,
-    user: 'Nilgunj Road, Sodepur',
-    action: 'Garbage overflow detected',
-    time: '2 minutes ago',
-    icon: AlertTriangle,
-    iconColor: 'text-red-500',
-    confidence: '46.97%',
-    status: 'LOW_OVERFLOW',
-  },
-  {
-    id: 2,
-    user: 'Kamarhati, Barrackpore',
-    action: 'Detection completed',
-    time: '5 minutes ago',
-    icon: CheckCircle,
-    iconColor: 'text-green-500',
-    confidence: '32.92%',
-    status: 'LOW_OVERFLOW',
-  },
-  {
-    id: 3,
-    user: 'North 24 Parganas',
-    action: 'Overflow monitoring active',
-    time: '15 minutes ago',
-    icon: Activity,
-    iconColor: 'text-blue-500',
-    confidence: '41.5%',
-    status: 'MEDIUM_OVERFLOW',
-  },
-  {
-    id: 4,
-    user: 'West Bengal Area',
-    action: 'Collection scheduled',
-    time: '1 hour ago',
-    icon: Clock,
-    iconColor: 'text-yellow-500',
-    confidence: '38.2%',
-    status: 'LOW_OVERFLOW',
-  },
-];
+// Helper function to get status from confidence score
+const getStatusFromConfidence = (confidence: number): { status: string; color: string; bgColor: string; borderColor: string } => {
+  const confidencePercent = confidence * 100;
+  
+  if (confidencePercent >= 80) {
+    return { 
+      status: 'HIGH OVERFLOW', 
+      color: 'text-red-800', 
+      bgColor: 'bg-red-100',
+      borderColor: 'border-red-500'
+    };
+  }
+  if (confidencePercent >= 60) {
+    return { 
+      status: 'MEDIUM-HIGH OVERFLOW', 
+      color: 'text-orange-800', 
+      bgColor: 'bg-orange-100',
+      borderColor: 'border-orange-500'
+    };
+  }
+  if (confidencePercent >= 40) {
+    return { 
+      status: 'MEDIUM OVERFLOW', 
+      color: 'text-amber-800', 
+      bgColor: 'bg-amber-100',
+      borderColor: 'border-amber-500'
+    };
+  }
+  if (confidencePercent >= 20) {
+    return { 
+      status: 'LOW OVERFLOW', 
+      color: 'text-lime-800', 
+      bgColor: 'bg-lime-100',
+      borderColor: 'border-lime-500'
+    };
+  }
+  return { 
+    status: 'VERY LOW OVERFLOW', 
+    color: 'text-green-800', 
+    bgColor: 'bg-green-100',
+    borderColor: 'border-green-500'
+  };
+};
+
+// Helper function to format time ago
+const formatTimeAgo = (timestamp: string): string => {
+  try {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes} minute${diffInMinutes > 1 ? 's' : ''} ago`;
+    
+    const diffInHours = Math.floor(diffInMinutes / 60);
+    if (diffInHours < 24) return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
+    
+    const diffInDays = Math.floor(diffInHours / 24);
+    return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
+  } catch (error) {
+    return 'Unknown time';
+  }
+};
 
 export default function DashboardPage() {
   const reportRef = useRef<HTMLDivElement>(null);
   
+  // State for real data
+  const [recentActivities, setRecentActivities] = useState<ModelResult[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   // Pagination state for Recent Detection Events
   const [currentPage, setCurrentPage] = useState(1);
   const eventsPerPage = 2;
+  
+  // Fetch real data from Firebase
+  useEffect(() => {
+    const fetchRecentActivities = async () => {
+      try {
+        setLoading(true);
+        const response = await FirebaseService.fetchModelResults();
+        setRecentActivities(response.results);
+      } catch (err) {
+        setError('Failed to fetch recent activities');
+        console.error('Error fetching recent activities:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRecentActivities();
+  }, []);
   
   // Calculate pagination
   const totalPages = Math.ceil(recentActivities.length / eventsPerPage);
@@ -433,20 +479,57 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className="space-y-3">
-                  {currentEvents.map((activity, index) => (
-                    <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {activity.user} - {activity.action}
-                        </p>
-                        <p className="text-xs text-gray-500">{activity.time}</p>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm font-medium text-gray-900">{activity.confidence}</span>
-                        <p className="text-xs text-gray-500">Confidence</p>
-                      </div>
+                  {loading ? (
+                    <div className="space-y-3">
+                      {[1, 2].map((i) => (
+                        <div key={i} className="animate-pulse">
+                          <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex-1">
+                              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                            </div>
+                            <div className="text-right">
+                              <div className="h-4 bg-gray-200 rounded w-16 mb-1"></div>
+                              <div className="h-3 bg-gray-200 rounded w-20"></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  ) : error ? (
+                    <div className="text-center py-4">
+                      <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
+                      <p className="text-red-600 text-sm">{error}</p>
+                    </div>
+                  ) : currentEvents.length === 0 ? (
+                    <div className="text-center py-4">
+                      <CheckCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-gray-500 text-sm">No detection events found</p>
+                    </div>
+                  ) : (
+                    currentEvents.map((activity, index) => {
+                      const status = getStatusFromConfidence(activity.confidence_score);
+                      const globalIndex = startIndex + index;
+                      return (
+                        <div key={activity.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">
+                              Detection #{globalIndex + 1} - {activity.address}
+                            </p>
+                            <p className="text-xs text-gray-500">{formatTimeAgo(activity.timestamp)}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-sm font-medium text-gray-900">
+                              {(activity.confidence_score * 100).toFixed(1)}%
+                            </span>
+                            <p className={`text-xs px-2 py-1 rounded-full ${status.color} ${status.bgColor}`}>
+                              {status.status}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
                 
                 {/* Pagination Controls */}
@@ -546,54 +629,88 @@ export default function DashboardPage() {
             <Calendar className="h-5 w-5 text-gray-400" />
           </div>
           <div className="flow-root">
-            <ul className="-mb-8">
-              {recentActivities.map((activity, activityIdx) => (
-                <li key={activity.id}>
-                  <div className="relative pb-8">
-                    {activityIdx !== recentActivities.length - 1 ? (
-                      <span
-                        className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                        aria-hidden="true"
-                      />
-                    ) : null}
+            {loading ? (
+              <div className="space-y-4">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="animate-pulse">
                     <div className="relative flex space-x-3">
-                      <div>
-                        <span
-                          className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                            activity.iconColor
-                          }`}
-                        >
-                          <activity.icon className="h-4 w-4" />
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                        <div>
-                          <p className="text-sm text-gray-500">
-                            <span className="font-medium text-gray-900">
-                              {activity.user}
-                            </span>{' '}
-                            {activity.action}
-                          </p>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <span className="text-xs text-gray-400">Confidence: {activity.confidence}</span>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              activity.status === 'LOW_OVERFLOW' ? 'bg-green-100 text-green-800' :
-                              activity.status === 'MEDIUM_OVERFLOW' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
-                              {activity.status.replace('_', ' ')}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                          {activity.time}
-                        </div>
+                      <div className="h-8 w-8 bg-gray-200 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
                       </div>
                     </div>
                   </div>
-                </li>
-              ))}
-            </ul>
+                ))}
+              </div>
+            ) : error ? (
+              <div className="text-center py-8">
+                <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+                <p className="text-red-600">{error}</p>
+              </div>
+            ) : recentActivities.length === 0 ? (
+              <div className="text-center py-8">
+                <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No recent activities found</p>
+              </div>
+            ) : (
+              <ul className="-mb-8">
+                {recentActivities.slice(0, 4).map((activity, activityIdx) => {
+                  const status = getStatusFromConfidence(activity.confidence_score);
+                  const getIcon = () => {
+                    if (status.status.includes('HIGH')) return AlertTriangle;
+                    if (status.status.includes('MEDIUM')) return Activity;
+                    return CheckCircle;
+                  };
+                  const Icon = getIcon();
+                  
+                  return (
+                    <li key={activity.id}>
+                      <div className="relative pb-8">
+                        {activityIdx !== Math.min(recentActivities.length - 1, 3) ? (
+                          <span
+                            className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        <div className="relative flex space-x-3">
+                          <div>
+                            <span
+                              className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
+                                status.color
+                              }`}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </span>
+                          </div>
+                          <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                            <div>
+                              <p className="text-sm text-gray-500">
+                                <span className="font-medium text-gray-900">
+                                  {activity.address}
+                                </span>{' '}
+                                Garbage overflow detected
+                              </p>
+                              <div className="flex items-center space-x-2 mt-1">
+                                <span className="text-xs text-gray-400">
+                                  Confidence: {(activity.confidence_score * 100).toFixed(1)}%
+                                </span>
+                                <span className={`text-xs px-2 py-1 rounded-full ${status.color} ${status.bgColor}`}>
+                                  {status.status}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right text-sm whitespace-nowrap text-gray-500">
+                              {formatTimeAgo(activity.timestamp)}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </div>
       </div>
