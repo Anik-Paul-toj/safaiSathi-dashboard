@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { MapPin, Activity, TrendingUp, RefreshCw } from 'lucide-react';
+import { MapPin, Activity, TrendingUp, RefreshCw, Map, Satellite } from 'lucide-react';
 import { HeatmapPoint } from '@/types/heatmap';
 
 // Import Leaflet CSS
@@ -20,6 +20,11 @@ const TileLayer = dynamic(
   { ssr: false }
 );
 
+const LayerGroup = dynamic(
+  () => import('react-leaflet').then((mod) => mod.LayerGroup),
+  { ssr: false }
+);
+
 const HeatmapLayer = dynamic(
   () => import('@/components/HeatmapLayer'),
   { ssr: false }
@@ -28,6 +33,28 @@ const HeatmapLayer = dynamic(
 
 // Kolkata coordinates (center of the city)
 const KOLKATA_CENTER = [22.5726, 88.3639] as [number, number];
+
+// Tile layer configurations
+const TILE_LAYERS = {
+  terrain: {
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+    minZoom: 10,
+  },
+  satellite: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a> — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    maxZoom: 19,
+    minZoom: 10,
+  },
+  satelliteWithLabels: {
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+    attribution: '&copy; <a href="https://www.esri.com/">Esri</a> — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+    maxZoom: 19,
+    minZoom: 10,
+  }
+};
 
 // Generate random heatmap data points around Kolkata
 const generateRandomHeatmapData = (): HeatmapPoint[] => {
@@ -46,11 +73,15 @@ const generateRandomHeatmapData = (): HeatmapPoint[] => {
   return points;
 };
 
+type MapType = 'terrain' | 'satellite' | 'satelliteWithLabels';
+
 export default function HeatmapPage() {
   const [heatmapData, setHeatmapData] = useState<HeatmapPoint[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [mapType, setMapType] = useState<MapType>('terrain');
+  const [showLabels, setShowLabels] = useState(false);
 
   // Initialize heatmap data
   useEffect(() => {
@@ -177,6 +208,67 @@ export default function HeatmapPage() {
               )}
               
               <div className="absolute inset-0 bg-gray-100 rounded-b-lg">
+                {/* Map Type Toggle Overlay */}
+                <div className="absolute top-4 right-4 z-20 space-y-2">
+                  {/* Map Type Toggle */}
+                  <div className="flex items-center bg-white rounded-lg shadow-lg border border-gray-200 p-1">
+                    <button
+                      onClick={() => setMapType('terrain')}
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                        mapType === 'terrain'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Map className="h-4 w-4" />
+                      <span className="text-sm font-medium">Terrain</span>
+                    </button>
+                    <button
+                      onClick={() => setMapType('satellite')}
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                        mapType === 'satellite'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Satellite className="h-4 w-4" />
+                      <span className="text-sm font-medium">Satellite</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setMapType('satelliteWithLabels');
+                        setShowLabels(true);
+                      }}
+                      className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
+                        mapType === 'satelliteWithLabels'
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                      }`}
+                    >
+                      <Satellite className="h-4 w-4" />
+                      <span className="text-sm font-medium">Hybrid</span>
+                    </button>
+                  </div>
+                  
+                  {/* Labels Toggle (only show for satellite view, not hybrid) */}
+                  {mapType === 'satellite' && (
+                    <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-2">
+                      <button
+                        onClick={() => setShowLabels(!showLabels)}
+                        className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-colors w-full ${
+                          showLabels
+                            ? 'bg-green-600 text-white shadow-sm'
+                            : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                        }`}
+                      >
+                        <span className="text-sm font-medium">
+                          {showLabels ? 'Hide Labels' : 'Show Labels'}
+                        </span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
                 <MapContainer
                   center={KOLKATA_CENTER}
                   zoom={12}
@@ -199,12 +291,28 @@ export default function HeatmapPage() {
                     setTimeout(() => setMapLoaded(true), 300);
                   }}
                 >
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    maxZoom={19}
-                    minZoom={10}
-                  />
+                  <LayerGroup>
+                    {/* Base layer */}
+                    <TileLayer
+                      key={`${mapType}-base`}
+                      url={TILE_LAYERS[mapType].url}
+                      attribution={TILE_LAYERS[mapType].attribution}
+                      maxZoom={TILE_LAYERS[mapType].maxZoom}
+                      minZoom={TILE_LAYERS[mapType].minZoom}
+                    />
+                    
+                    {/* Labels layer for satellite views */}
+                    {(mapType === 'satellite' || mapType === 'satelliteWithLabels') && showLabels && (
+                      <TileLayer
+                        key={`${mapType}-labels`}
+                        url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}"
+                        attribution="&copy; <a href='https://www.esri.com/'>Esri</a>"
+                        maxZoom={19}
+                        minZoom={10}
+                        opacity={0.8}
+                      />
+                    )}
+                  </LayerGroup>
                   
                   {/* Heatmap Layer */}
                   {mapLoaded && (
