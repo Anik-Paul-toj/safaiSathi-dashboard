@@ -16,10 +16,10 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Truck,
   MapPin,
   Trash2,
-  Recycle
+  Recycle,
+  Activity
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -31,7 +31,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Collections', href: '/dashboard/collections', icon: Trash2 },
   { name: 'Routes', href: '/dashboard/routes', icon: MapPin },
-  { name: 'Vehicles', href: '/dashboard/vehicles', icon: Truck },
+  { name: 'Heatmap', href: '/dashboard/heatmap', icon: Activity },
   { name: 'Staff', href: '/dashboard/staff', icon: Users },
   { name: 'Reports', href: '/dashboard/reports', icon: FileText },
   { name: 'Analytics', href: '/dashboard/analytics', icon: BarChart3 },
