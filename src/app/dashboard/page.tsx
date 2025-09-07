@@ -89,7 +89,7 @@ export default function DashboardPage() {
   // State for real data
   const [recentActivities, setRecentActivities] = useState<ModelResult[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
   
   // Pagination state for Recent Detection Events
   const [currentPage, setCurrentPage] = useState(1);
@@ -544,10 +544,10 @@ export default function DashboardPage() {
                         </div>
                       ))}
                     </div>
-                  ) : error ? (
+                  ) : _error ? (
                     <div className="text-center py-4">
                       <AlertTriangle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                      <p className="text-red-600 text-sm">{error}</p>
+                      <p className="text-red-600 text-sm">{_error}</p>
                     </div>
                   ) : currentEvents.length === 0 ? (
                     <div className="text-center py-4">
@@ -678,10 +678,10 @@ export default function DashboardPage() {
                   </div>
                 ))}
               </div>
-            ) : error ? (
+            ) : _error ? (
               <div className="text-center py-8">
                 <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                <p className="text-red-600">{error}</p>
+                <p className="text-red-600">{_error}</p>
               </div>
             ) : recentActivities.length === 0 ? (
               <div className="text-center py-8">
