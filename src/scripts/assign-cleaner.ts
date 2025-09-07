@@ -112,7 +112,7 @@ export async function assignCleaner(detectionId: string): Promise<boolean> {
         working_area: matchedStaff.working_area
       };
       
-      await detectionRef.update(assignmentData);
+      await detectionRef.update(assignmentData as Record<string, unknown>);
       console.log(`Successfully assigned staff ${matchedStaff.id} to detection ${detectionId}`);
       return true;
     } else {

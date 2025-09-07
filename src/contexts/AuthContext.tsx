@@ -39,7 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-  const login = async (email: string, _password: string): Promise<boolean> => {
+  const login = async (email: string, _: string): Promise<boolean> => {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -60,7 +60,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signup = async (name: string, email: string, _password: string): Promise<boolean> => {
+  const signup = async (name: string, email: string, _: string): Promise<boolean> => {
     try {
       // Simulate API call
       await new Promise(resolve => setTimeout(resolve, 1000));
