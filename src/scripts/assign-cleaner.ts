@@ -1,4 +1,4 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { initializeApp, getApps } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin SDK
@@ -17,7 +17,7 @@ const initializeFirebaseAdmin = () => {
 // Types for our data structures
 interface StaffDocument {
   working_area: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ModelResultDocument {
@@ -27,7 +27,7 @@ interface ModelResultDocument {
     latitude: number;
     longitude: number;
   };
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface AssignmentData {
@@ -112,7 +112,7 @@ export async function assignCleaner(detectionId: string): Promise<boolean> {
         working_area: matchedStaff.working_area
       };
       
-      await detectionRef.update(assignmentData as any);
+      await detectionRef.update(assignmentData);
       console.log(`Successfully assigned staff ${matchedStaff.id} to detection ${detectionId}`);
       return true;
     } else {

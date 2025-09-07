@@ -1,12 +1,9 @@
 'use client';
 
 import { 
-  Trash2,
   MapPin, 
   Activity,
-  BarChart3,
   Calendar,
-  Clock,
   CheckCircle,
   Truck,
   Recycle,
