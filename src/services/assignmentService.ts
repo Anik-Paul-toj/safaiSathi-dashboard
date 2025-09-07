@@ -1,6 +1,7 @@
-import { collection, getDocs, where, query, doc, updateDoc, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, where, query, doc, updateDoc, DocumentData, QueryDocumentSnapshot, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AssignedWork, SafaiKarmi } from '@/types/staff';
+import { simpleWhatsAppService } from './simpleWhatsAppService';
 
 export class AssignmentService {
   /**
@@ -149,9 +150,147 @@ export class AssignmentService {
         workStatus: status,
         updatedAt: new Date().toISOString()
       });
+
+      // Send WhatsApp notification for status changes
+      if (status === 'completed') {
+        await this.sendWorkCompletionNotification(detectionId);
+      }
     } catch (error) {
       console.error('Error updating work status:', error);
       throw new Error('Failed to update work status');
+    }
+  }
+
+  /**
+   * Assign work to staff member with WhatsApp notification
+   */
+  static async assignWorkWithNotification(detectionId: string, staffId: string, workingArea: string): Promise<boolean> {
+    try {
+      // Update the detection with staff assignment
+      const detectionRef = doc(db, 'model_results', detectionId);
+      await updateDoc(detectionRef, {
+        staffId: staffId,
+        working_area: workingArea,
+        assignedAt: new Date().toISOString(),
+        workStatus: 'pending'
+      });
+
+      // Get staff member details
+      const staffRef = doc(db, 'staff', staffId);
+      const staffDoc = await getDoc(staffRef);
+      
+      if (!staffDoc.exists()) {
+        console.error('Staff member not found:', staffId);
+        return false;
+      }
+
+      const staffData = staffDoc.data();
+      const staff: SafaiKarmi = {
+        id: staffDoc.id,
+        name: staffData.name,
+        phone: staffData.phone,
+        workingArea: staffData.workingArea,
+        status: staffData.status,
+        joinDate: staffData.joinDate,
+        lastActive: staffData.lastActive,
+        totalCollections: staffData.totalCollections || 0,
+        rating: staffData.rating || 5
+      };
+
+      // Get work details
+      const detectionDoc = await getDoc(detectionRef);
+      if (!detectionDoc.exists()) {
+        console.error('Detection not found:', detectionId);
+        return false;
+      }
+
+      const detectionData = detectionDoc.data();
+      const location = detectionData.location || {};
+      
+      const work: AssignedWork = {
+        detectionId: detectionId,
+        address: location.address || detectionData.address || 'Unknown Address',
+        latitude: location.latitude || detectionData.latitude || 0,
+        longitude: location.longitude || detectionData.longitude || 0,
+        confidenceScore: detectionData.confidence_scores || detectionData.confidence_score || 0,
+        assignedAt: new Date().toISOString(),
+        status: 'pending'
+      };
+
+      // Send WhatsApp notification via simple service
+      const notificationSent = await simpleWhatsAppService.sendWorkAssignmentNotification(staff, work);
+      
+      if (notificationSent) {
+        console.log(`✅ Work assigned and WhatsApp notification prepared for ${staff.name} (${staff.phone})`);
+        // Show notification preview
+        if (typeof window !== 'undefined') {
+          const message = simpleWhatsAppService['formatWorkAssignmentMessage'](staff, work);
+          simpleWhatsAppService.showNotificationPreview(staff, work, message);
+        }
+      } else {
+        console.log(`⚠️ Work assigned but notification failed for ${staff.name} (${staff.phone})`);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error assigning work with notification:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Send work completion notification
+   */
+  private static async sendWorkCompletionNotification(detectionId: string): Promise<void> {
+    try {
+      // Get detection details
+      const detectionRef = doc(db, 'model_results', detectionId);
+      const detectionDoc = await getDoc(detectionRef);
+      
+      if (!detectionDoc.exists() || !detectionDoc.data().staffId) {
+        return;
+      }
+
+      const detectionData = detectionDoc.data();
+      const staffId = detectionData.staffId;
+
+      // Get staff member details
+      const staffRef = doc(db, 'staff', staffId);
+      const staffDoc = await getDoc(staffRef);
+      
+      if (!staffDoc.exists()) {
+        return;
+      }
+
+      const staffData = staffDoc.data();
+      const staff: SafaiKarmi = {
+        id: staffDoc.id,
+        name: staffData.name,
+        phone: staffData.phone,
+        workingArea: staffData.workingArea,
+        status: staffData.status,
+        joinDate: staffData.joinDate,
+        lastActive: staffData.lastActive,
+        totalCollections: staffData.totalCollections || 0,
+        rating: staffData.rating || 5
+      };
+
+      // Get work details
+      const location = detectionData.location || {};
+      const work: AssignedWork = {
+        detectionId: detectionId,
+        address: location.address || detectionData.address || 'Unknown Address',
+        latitude: location.latitude || detectionData.latitude || 0,
+        longitude: location.longitude || detectionData.longitude || 0,
+        confidenceScore: detectionData.confidence_scores || detectionData.confidence_score || 0,
+        assignedAt: detectionData.assignedAt || new Date().toISOString(),
+        status: 'completed'
+      };
+
+      // Send completion notification
+      await simpleWhatsAppService.sendWorkCompletionNotification(staff, work);
+    } catch (error) {
+      console.error('Error sending work completion notification:', error);
     }
   }
 

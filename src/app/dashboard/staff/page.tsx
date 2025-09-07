@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Users, Plus, Search, Filter, MapPin, Phone, User, CheckCircle, AlertTriangle, RefreshCw, Briefcase, Square, X } from 'lucide-react';
 import { SafaiKarmi, AssignedWork } from '@/types/staff';
 import SafaiKarmiModal from '@/components/SafaiKarmiModal';
+import WhatsAppNotificationButton from '@/components/WhatsAppNotificationButton';
 import { FirebaseService } from '@/services/firebaseService';
 import { AssignmentService } from '@/services/assignmentService';
 import { runStaffMigration } from '@/scripts/migrateStaffData';
@@ -95,18 +96,20 @@ export default function StaffPage() {
             }
           }
           
-          // Assign the detection to matched staff
+          // Assign the detection to matched staff with WhatsApp notification
           if (matchedStaff) {
-            const { updateDoc } = await import('firebase/firestore');
-            await updateDoc(detectionRef, {
-              staffId: matchedStaff.id,
-              working_area: matchedStaff.workingArea,
-              assignedAt: new Date().toISOString(),
-              workStatus: 'pending'
-            });
+            const success = await AssignmentService.assignWorkWithNotification(
+              detectionId,
+              matchedStaff.id,
+              matchedStaff.workingArea
+            );
             
-            assignedCount++;
-            console.log(`✅ Assigned detection ${detectionId} to staff ${matchedStaff.name}`);
+            if (success) {
+              assignedCount++;
+              console.log(`✅ Assigned detection ${detectionId} to staff ${matchedStaff.name} with notification`);
+            } else {
+              console.log(`❌ Failed to assign detection ${detectionId} to staff ${matchedStaff.name}`);
+            }
           } else {
             console.log(`❌ No matching staff found for detection at ${address}`);
           }
@@ -719,6 +722,17 @@ export default function StaffPage() {
                         >
                           Cancel
                         </button>
+                      )}
+                      
+                      {/* WhatsApp Notification Button */}
+                      {selectedKarmiWork && (
+                        <WhatsAppNotificationButton
+                          staff={karmis.find(k => k.assignedWork?.some(w => w.detectionId === work.detectionId)) || karmis[0]}
+                          work={work}
+                          type={work.status === 'completed' ? 'work_completed' : 'work_assignment'}
+                          className="text-xs"
+                          showPreview={false}
+                        />
                       )}
                     </div>
                   </div>

@@ -22,7 +22,9 @@
     "fix-manifests": "npx tsx src/scripts/fix-manifests.ts",
     "assign-cleaners": "npx tsx -e \"import('./src/scripts/assign-cleaner').then(m => m.assignCleanersToUnassigned())\"",
     "run-assignments": "npx tsx src/scripts/integrate-assignments.ts",
-    "process-heatmap": "npx tsx src/scripts/heatmap-processor.ts"
+    "process-heatmap": "npx tsx src/scripts/heatmap-processor.ts",
+    "test-whatsapp": "npx tsx src/scripts/test-whatsapp-notifications.ts",
+    "test-simple-whatsapp": "npx tsx src/scripts/test-simple-whatsapp.ts"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.20",
