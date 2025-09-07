@@ -402,5 +402,6 @@ if (require.main === module) {
 export {
   calculateDistance,
   isWithinProximity,
+  isWithinDegreeThreshold,
   findNearbyDetections
 };
