@@ -1,5 +1,5 @@
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore, FieldValue, Firestore } from 'firebase-admin/firestore';
+import { initializeApp, getApps } from 'firebase-admin/app';
+import { getFirestore, Firestore } from 'firebase-admin/firestore';
 
 // Initialize Firebase Admin SDK
 export const initializeFirebaseAdmin = () => {
@@ -233,7 +233,7 @@ async function findNearbyDetections(
     const detectionsSnapshot = await db.collection('model_results').get();
     const nearbyDetections: Array<{id: string, latitude: number, longitude: number, address: string}> = [];
     
-    detectionsSnapshot.forEach((doc: any) => {
+    detectionsSnapshot.forEach((doc) => {
       // Skip the current detection
       if (doc.id === excludeId) return;
       
@@ -305,7 +305,7 @@ export async function getAllDetectionIds(): Promise<string[]> {
     const db = initializeFirebaseAdmin();
     const detectionsSnapshot = await db.collection('model_results').get();
     
-    return detectionsSnapshot.docs.map((doc: any) => doc.id);
+    return detectionsSnapshot.docs.map((doc) => doc.id);
   } catch (error) {
     console.error('Error getting detection IDs:', error);
     throw error;
