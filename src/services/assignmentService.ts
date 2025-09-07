@@ -1,4 +1,4 @@
-import { collection, getDocs, where, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, where, query, doc, updateDoc, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AssignedWork, SafaiKarmi } from '@/types/staff';
 
@@ -144,7 +144,6 @@ export class AssignmentService {
    */
   static async updateWorkStatus(detectionId: string, status: 'pending' | 'in_progress' | 'completed' | 'cancelled'): Promise<void> {
     try {
-      const { doc, updateDoc } = await import('firebase/firestore');
       const detectionRef = doc(db, 'model_results', detectionId);
       await updateDoc(detectionRef, {
         workStatus: status,
