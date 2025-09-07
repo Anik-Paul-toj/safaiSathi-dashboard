@@ -13,20 +13,6 @@ interface SafaiKarmiModalProps {
   mode: 'add' | 'edit' | 'view';
 }
 
-const workingAreas = [
-  'Sector 1 - Salt Lake',
-  'Sector 2 - Salt Lake',
-  'Park Street Area',
-  'New Market Area',
-  'Howrah Station Area',
-  'Ballygunge Area',
-  'Tollygunge Area',
-  'Garia Area',
-  'Dum Dum Area',
-  'Sealdah Area',
-  'Esplanade Area',
-  'Chowringhee Area'
-];
 
 export default function SafaiKarmiModal({ 
   isOpen, 
@@ -220,21 +206,16 @@ export default function SafaiKarmiModal({
               <MapPin className="h-4 w-4 inline mr-2" />
               Working Area
             </label>
-            <select
+            <input
+              type="text"
               value={formData.workingArea}
               onChange={(e) => handleInputChange('workingArea', e.target.value)}
               disabled={isViewMode}
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-black text-black ${
                 errors.workingArea ? 'border-red-300' : 'border-gray-300'
               } ${isViewMode ? 'bg-gray-50' : 'bg-white'}`}
-            >
-              <option value="">Select working area</option>
-              {workingAreas.map((area) => (
-                <option key={area} value={area}>
-                  {area}
-                </option>
-              ))}
-            </select>
+              placeholder="Enter working area"
+            />
             {errors.workingArea && (
               <p className="mt-1 text-sm text-red-600 flex items-center">
                 <AlertCircle className="h-4 w-4 mr-1" />
