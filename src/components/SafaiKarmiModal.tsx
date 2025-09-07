@@ -7,8 +7,8 @@ import { SafaiKarmi } from '@/types/staff';
 interface SafaiKarmiModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (karmi: Omit<SafaiKarmi, 'id'>) => void;
-  onUpdate?: (id: string, karmi: Omit<SafaiKarmi, 'id'>) => void;
+  onSave: (karmi: Omit<SafaiKarmi, 'id'>) => Promise<void>;
+  onUpdate?: (id: string, karmi: Omit<SafaiKarmi, 'id'>) => Promise<void>;
   karmi?: SafaiKarmi | null;
   mode: 'add' | 'edit' | 'view';
 }
@@ -91,8 +91,6 @@ export default function SafaiKarmiModal({
 
     if (!formData.phone.trim()) {
       newErrors.phone = 'Phone number is required';
-    } else if (!/^\+91\s\d{5}\s\d{5}$/.test(formData.phone)) {
-      newErrors.phone = 'Phone must be in format +91 XXXXX XXXXX';
     }
 
     if (!formData.workingArea) {
@@ -122,13 +120,14 @@ export default function SafaiKarmiModal({
     
     try {
       if (mode === 'add') {
-        onSave(formData);
+        await onSave(formData);
       } else if (mode === 'edit' && karmi) {
-        onUpdate?.(karmi.id, formData);
+        await onUpdate?.(karmi.id, formData);
       }
       onClose();
     } catch (error) {
       console.error('Error saving safai karmi:', error);
+      // Don't close modal on error, let user retry
     } finally {
       setIsSubmitting(false);
     }
@@ -205,7 +204,7 @@ export default function SafaiKarmiModal({
               className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
                 errors.phone ? 'border-red-300' : 'border-gray-300'
               } ${isViewMode ? 'bg-gray-50' : 'bg-white'}`}
-              placeholder="+91 XXXXX XXXXX"
+              placeholder="Enter phone number"
             />
             {errors.phone && (
               <p className="mt-1 text-sm text-red-600 flex items-center">

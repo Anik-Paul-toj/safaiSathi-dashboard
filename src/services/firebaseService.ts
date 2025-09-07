@@ -1,6 +1,7 @@
-import { collection, getDocs, query, orderBy, limit, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, limit, DocumentData, QueryDocumentSnapshot, addDoc, updateDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { ModelResult, ModelResultsResponse, AreaData } from '@/types/garbage-detection';
+import { SafaiKarmi } from '@/types/staff';
 
 export class FirebaseService {
   /**
@@ -254,6 +255,225 @@ export class FirebaseService {
     } catch (error) {
       console.error('Error fetching paginated model results:', error);
       throw new Error('Failed to fetch paginated model results from Firebase');
+    }
+  }
+
+  // ==================== STAFF MANAGEMENT ====================
+
+  /**
+   * Fetch all staff members from the staff collection
+   */
+  static async fetchStaff(): Promise<SafaiKarmi[]> {
+    try {
+      const staffRef = collection(db, 'staff');
+      const q = query(staffRef, orderBy('joinDate', 'desc'));
+      
+      const querySnapshot = await getDocs(q);
+      const staff: SafaiKarmi[] = [];
+      
+      querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+        const data = doc.data();
+        staff.push({
+          id: doc.id,
+          name: data.name,
+          phone: data.phone,
+          workingArea: data.workingArea,
+          status: data.status,
+          joinDate: data.joinDate,
+          lastActive: data.lastActive,
+          totalCollections: data.totalCollections || 0,
+          rating: data.rating || 5
+        });
+      });
+
+      return staff;
+    } catch (error) {
+      console.error('Error fetching staff:', error);
+      throw new Error('Failed to fetch staff from Firebase');
+    }
+  }
+
+  /**
+   * Add a new staff member to the staff collection
+   */
+  static async addStaff(karmiData: Omit<SafaiKarmi, 'id'>): Promise<string> {
+    try {
+      const staffRef = collection(db, 'staff');
+      const docRef = await addDoc(staffRef, {
+        ...karmiData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding staff:', error);
+      throw new Error('Failed to add staff to Firebase');
+    }
+  }
+
+  /**
+   * Update an existing staff member
+   */
+  static async updateStaff(id: string, karmiData: Omit<SafaiKarmi, 'id'>): Promise<void> {
+    try {
+      const staffDoc = doc(db, 'staff', id);
+      await updateDoc(staffDoc, {
+        ...karmiData,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error updating staff:', error);
+      throw new Error('Failed to update staff in Firebase');
+    }
+  }
+
+  /**
+   * Delete a staff member
+   */
+  static async deleteStaff(id: string): Promise<void> {
+    try {
+      const staffDoc = doc(db, 'staff', id);
+      await deleteDoc(staffDoc);
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+      throw new Error('Failed to delete staff from Firebase');
+    }
+  }
+
+  /**
+   * Get a single staff member by ID
+   */
+  static async getStaffById(id: string): Promise<SafaiKarmi | null> {
+    try {
+      const staffDoc = doc(db, 'staff', id);
+      const docSnap = await getDoc(staffDoc);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          name: data.name,
+          phone: data.phone,
+          workingArea: data.workingArea,
+          status: data.status,
+          joinDate: data.joinDate,
+          lastActive: data.lastActive,
+          totalCollections: data.totalCollections || 0,
+          rating: data.rating || 5
+        };
+      } else {
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting staff by ID:', error);
+      throw new Error('Failed to get staff from Firebase');
+    }
+  }
+
+  /**
+   * Migrate hardcoded staff data to Firebase (one-time operation)
+   */
+  static async migrateStaffData(): Promise<void> {
+    try {
+      const hardcodedStaff: Omit<SafaiKarmi, 'id'>[] = [
+        {
+          name: 'Ram Prasad Yadav',
+          phone: '+91 98765 43210',
+          workingArea: 'Sector 1 - Salt Lake',
+          status: 'Active',
+          joinDate: '2023-01-15',
+          lastActive: '2 hours ago',
+          totalCollections: 1247,
+          rating: 4.8
+        },
+        {
+          name: 'Sunita Devi',
+          phone: '+91 98765 43211',
+          workingArea: 'Sector 2 - Salt Lake',
+          status: 'Active',
+          joinDate: '2023-02-20',
+          lastActive: '1 hour ago',
+          totalCollections: 1156,
+          rating: 4.9
+        },
+        {
+          name: 'Mohammad Ali',
+          phone: '+91 98765 43212',
+          workingArea: 'Park Street Area',
+          status: 'On Leave',
+          joinDate: '2022-11-10',
+          lastActive: '3 days ago',
+          totalCollections: 2103,
+          rating: 4.7
+        },
+        {
+          name: 'Priya Kumari',
+          phone: '+91 98765 43213',
+          workingArea: 'New Market Area',
+          status: 'Active',
+          joinDate: '2023-03-05',
+          lastActive: '30 minutes ago',
+          totalCollections: 892,
+          rating: 4.6
+        },
+        {
+          name: 'Biswajit Mondal',
+          phone: '+91 98765 43214',
+          workingArea: 'Howrah Station Area',
+          status: 'Active',
+          joinDate: '2022-08-12',
+          lastActive: '45 minutes ago',
+          totalCollections: 1876,
+          rating: 4.9
+        },
+        {
+          name: 'Rekha Singh',
+          phone: '+91 98765 43215',
+          workingArea: 'Ballygunge Area',
+          status: 'Inactive',
+          joinDate: '2023-01-08',
+          lastActive: '1 week ago',
+          totalCollections: 567,
+          rating: 4.2
+        },
+        {
+          name: 'Amit Kumar',
+          phone: '+91 98765 43216',
+          workingArea: 'Tollygunge Area',
+          status: 'Active',
+          joinDate: '2023-04-15',
+          lastActive: '1 hour ago',
+          totalCollections: 743,
+          rating: 4.5
+        },
+        {
+          name: 'Kavita Sharma',
+          phone: '+91 98765 43217',
+          workingArea: 'Garia Area',
+          status: 'Active',
+          joinDate: '2022-12-03',
+          lastActive: '2 hours ago',
+          totalCollections: 1345,
+          rating: 4.8
+        }
+      ];
+
+      // Check if staff collection already has data
+      const existingStaff = await this.fetchStaff();
+      if (existingStaff.length > 0) {
+        console.log('Staff data already exists in Firebase. Skipping migration.');
+        return;
+      }
+
+      // Add each staff member to Firebase
+      for (const staffMember of hardcodedStaff) {
+        await this.addStaff(staffMember);
+      }
+
+      console.log('Successfully migrated staff data to Firebase');
+    } catch (error) {
+      console.error('Error migrating staff data:', error);
+      throw new Error('Failed to migrate staff data to Firebase');
     }
   }
 }

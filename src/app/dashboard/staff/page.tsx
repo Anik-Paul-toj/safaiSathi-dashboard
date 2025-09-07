@@ -1,109 +1,64 @@
 'use client';
 
-import { useState } from 'react';
-import { Users, Plus, Search, Filter, MapPin, Phone, User, Clock, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Users, Plus, Search, Filter, MapPin, Phone, User, Clock, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
 import { SafaiKarmi } from '@/types/staff';
 import SafaiKarmiModal from '@/components/SafaiKarmiModal';
-
-// Hardcoded safai karmi data
-const safaiKarmis: SafaiKarmi[] = [
-  {
-    id: 'SK001',
-    name: 'Ram Prasad Yadav',
-    phone: '+91 98765 43210',
-    workingArea: 'Sector 1 - Salt Lake',
-    status: 'Active',
-    joinDate: '2023-01-15',
-    lastActive: '2 hours ago',
-    totalCollections: 1247,
-    rating: 4.8
-  },
-  {
-    id: 'SK002',
-    name: 'Sunita Devi',
-    phone: '+91 98765 43211',
-    workingArea: 'Sector 2 - Salt Lake',
-    status: 'Active',
-    joinDate: '2023-02-20',
-    lastActive: '1 hour ago',
-    totalCollections: 1156,
-    rating: 4.9
-  },
-  {
-    id: 'SK003',
-    name: 'Mohammad Ali',
-    phone: '+91 98765 43212',
-    workingArea: 'Park Street Area',
-    status: 'On Leave',
-    joinDate: '2022-11-10',
-    lastActive: '3 days ago',
-    totalCollections: 2103,
-    rating: 4.7
-  },
-  {
-    id: 'SK004',
-    name: 'Priya Kumari',
-    phone: '+91 98765 43213',
-    workingArea: 'New Market Area',
-    status: 'Active',
-    joinDate: '2023-03-05',
-    lastActive: '30 minutes ago',
-    totalCollections: 892,
-    rating: 4.6
-  },
-  {
-    id: 'SK005',
-    name: 'Biswajit Mondal',
-    phone: '+91 98765 43214',
-    workingArea: 'Howrah Station Area',
-    status: 'Active',
-    joinDate: '2022-08-12',
-    lastActive: '45 minutes ago',
-    totalCollections: 1876,
-    rating: 4.9
-  },
-  {
-    id: 'SK006',
-    name: 'Rekha Singh',
-    phone: '+91 98765 43215',
-    workingArea: 'Ballygunge Area',
-    status: 'Inactive',
-    joinDate: '2023-01-08',
-    lastActive: '1 week ago',
-    totalCollections: 567,
-    rating: 4.2
-  },
-  {
-    id: 'SK007',
-    name: 'Amit Kumar',
-    phone: '+91 98765 43216',
-    workingArea: 'Tollygunge Area',
-    status: 'Active',
-    joinDate: '2023-04-15',
-    lastActive: '1 hour ago',
-    totalCollections: 743,
-    rating: 4.5
-  },
-  {
-    id: 'SK008',
-    name: 'Kavita Sharma',
-    phone: '+91 98765 43217',
-    workingArea: 'Garia Area',
-    status: 'Active',
-    joinDate: '2022-12-03',
-    lastActive: '2 hours ago',
-    totalCollections: 1345,
-    rating: 4.8
-  }
-];
+import { FirebaseService } from '@/services/firebaseService';
+import { runStaffMigration } from '@/scripts/migrateStaffData';
 
 export default function StaffPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
-  const [karmis, setKarmis] = useState<SafaiKarmi[]>(safaiKarmis);
+  const [karmis, setKarmis] = useState<SafaiKarmi[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'add' | 'edit' | 'view'>('add');
   const [selectedKarmi, setSelectedKarmi] = useState<SafaiKarmi | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
+
+  // Load staff data from Firebase
+  useEffect(() => {
+    loadStaffData();
+  }, []);
+
+  const loadStaffData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const staffData = await FirebaseService.fetchStaff();
+      setKarmis(staffData);
+      
+      // If no data exists, show migration option
+      if (staffData.length === 0) {
+        setMigrationStatus('No staff data found. Click "Migrate Data" to add the initial staff members.');
+      }
+    } catch (err) {
+      console.error('Error loading staff data:', err);
+      setError('Failed to load staff data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMigrateData = async () => {
+    try {
+      setLoading(true);
+      const result = await runStaffMigration();
+      if (result.success) {
+        setMigrationStatus('Data migrated successfully!');
+        await loadStaffData(); // Reload data after migration
+      } else {
+        setError(result.message);
+      }
+    } catch (err) {
+      console.error('Migration error:', err);
+      setError('Migration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter safai karmis based on search and status
   const filteredKarmis = karmis.filter(karmi => {
@@ -194,36 +149,55 @@ export default function StaffPage() {
     setSelectedKarmi(null);
   };
 
-  // Generate new ID for new karmi
-  const generateNewId = () => {
-    if (karmis.length === 0) return 'SK001';
-    const maxId = Math.max(...karmis.map(k => parseInt(k.id.replace('SK', ''))));
-    return `SK${String(maxId + 1).padStart(3, '0')}`;
-  };
-
   // Save new karmi
-  const handleSaveKarmi = (karmiData: Omit<SafaiKarmi, 'id'>) => {
-    const newKarmi: SafaiKarmi = {
-      ...karmiData,
-      id: generateNewId(),
-      lastActive: 'Just now'
-    };
-    setKarmis(prev => [...prev, newKarmi]);
+  const handleSaveKarmi = async (karmiData: Omit<SafaiKarmi, 'id'>) => {
+    try {
+      setLoading(true);
+      const newKarmiData = {
+        ...karmiData,
+        lastActive: 'Just now'
+      };
+      await FirebaseService.addStaff(newKarmiData);
+      await loadStaffData(); // Reload data from Firebase
+    } catch (err) {
+      console.error('Error saving karmi:', err);
+      setError('Failed to save safai karmi. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Update existing karmi
-  const handleUpdateKarmi = (id: string, karmiData: Omit<SafaiKarmi, 'id'>) => {
-    setKarmis(prev => prev.map(k => 
-      k.id === id 
-        ? { ...karmiData, id, lastActive: 'Just now' }
-        : k
-    ));
+  const handleUpdateKarmi = async (id: string, karmiData: Omit<SafaiKarmi, 'id'>) => {
+    try {
+      setLoading(true);
+      const updatedKarmiData = {
+        ...karmiData,
+        lastActive: 'Just now'
+      };
+      await FirebaseService.updateStaff(id, updatedKarmiData);
+      await loadStaffData(); // Reload data from Firebase
+    } catch (err) {
+      console.error('Error updating karmi:', err);
+      setError('Failed to update safai karmi. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Remove karmi
-  const handleRemoveKarmi = (id: string) => {
+  const handleRemoveKarmi = async (id: string) => {
     if (window.confirm('Are you sure you want to remove this safai karmi?')) {
-      setKarmis(prev => prev.filter(k => k.id !== id));
+      try {
+        setLoading(true);
+        await FirebaseService.deleteStaff(id);
+        await loadStaffData(); // Reload data from Firebase
+      } catch (err) {
+        console.error('Error removing karmi:', err);
+        setError('Failed to remove safai karmi. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -237,14 +211,69 @@ export default function StaffPage() {
             Manage and monitor waste collection workers across Kolkata
           </p>
         </div>
-        <button 
-          onClick={handleAddKarmi}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Safai Karmi
-        </button>
+        <div className="flex space-x-3">
+          {migrationStatus && (
+            <button 
+              onClick={handleMigrateData}
+              disabled={loading}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Migrate Data
+            </button>
+          )}
+          <button 
+            onClick={handleAddKarmi}
+            disabled={loading}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Add Safai Karmi
+          </button>
+        </div>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <AlertTriangle className="h-5 w-5 text-red-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-red-800">Error</h3>
+              <div className="mt-2 text-sm text-red-700">
+                <p>{error}</p>
+              </div>
+              <div className="mt-4">
+                <button
+                  onClick={() => setError(null)}
+                  className="bg-red-50 px-2 py-1.5 rounded-md text-sm font-medium text-red-800 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-red-50 focus:ring-red-600"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Migration Status */}
+      {migrationStatus && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <RefreshCw className="h-5 w-5 text-blue-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">Migration Status</h3>
+              <div className="mt-2 text-sm text-blue-700">
+                <p>{migrationStatus}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -306,8 +335,16 @@ export default function StaffPage() {
             Safai Karmis ({filteredKarmis.length})
           </h3>
         </div>
-        <ul className="divide-y divide-gray-200">
-          {filteredKarmis.map((karmi) => (
+        
+        {loading ? (
+          <div className="px-6 py-12 text-center">
+            <RefreshCw className="h-8 w-8 text-gray-400 mx-auto mb-4 animate-spin" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Loading staff data...</h3>
+            <p className="text-gray-500">Please wait while we fetch the latest information.</p>
+          </div>
+        ) : (
+          <ul className="divide-y divide-gray-200">
+            {filteredKarmis.map((karmi) => (
             <li key={karmi.id}>
               <div className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
                 <div className="flex items-center">
@@ -378,13 +415,19 @@ export default function StaffPage() {
               </div>
             </li>
           ))}
-        </ul>
+          </ul>
+        )}
         
-        {filteredKarmis.length === 0 && (
+        {!loading && filteredKarmis.length === 0 && (
           <div className="px-6 py-12 text-center">
             <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No safai karmis found</h3>
-            <p className="text-gray-500">Try adjusting your search or filter criteria.</p>
+            <p className="text-gray-500">
+              {karmis.length === 0 
+                ? 'No staff members have been added yet. Click "Add Safai Karmi" to get started.'
+                : 'Try adjusting your search or filter criteria.'
+              }
+            </p>
           </div>
         )}
       </div>
