@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { MapPin, Activity, TrendingUp, RefreshCw, Map, Satellite, AlertCircle } from 'lucide-react';
+import { MapPin, Activity, TrendingUp, RefreshCw, Map, Satellite, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
 import { ModelResult, ModelResultsResponse } from '@/types/garbage-detection';
 import { FirebaseService } from '@/services/firebaseService';
+import { HeatmapProcessingService, ProcessedModelResult } from '@/services/heatmapProcessingService';
+import { AutomatedCleanupService } from '@/services/automatedCleanupService';
 
 // Import Leaflet CSS
 import 'leaflet/dist/leaflet.css';
@@ -76,7 +78,7 @@ const calculateMapCenter = (results: ModelResult[]): [number, number] => {
 type MapType = 'terrain' | 'satellite' | 'satelliteWithLabels';
 
 export default function HeatmapPage() {
-  const [modelResults, setModelResults] = useState<ModelResult[]>([]);
+  const [modelResults, setModelResults] = useState<ProcessedModelResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -86,6 +88,14 @@ export default function HeatmapPage() {
   const [totalDataPoints, setTotalDataPoints] = useState(0);
   const [averageConfidence, setAverageConfidence] = useState(0);
   const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_CENTER);
+  const [processedCount, setProcessedCount] = useState(0);
+  const [removedCount, setRemovedCount] = useState(0);
+  const [cleanupNotification, setCleanupNotification] = useState<{
+    show: boolean;
+    message: string;
+    count: number;
+    type: 'success' | 'info';
+  }>({ show: false, message: '', count: 0, type: 'info' });
 
   // Auto-refresh data every 30 seconds to keep it live
   useEffect(() => {
@@ -104,13 +114,17 @@ export default function HeatmapPage() {
       setError(null);
       
       try {
-        const response: ModelResultsResponse = await FirebaseService.fetchModelResults();
-        setModelResults(response.results);
-        setTotalDataPoints(response.totalCount);
-        setAverageConfidence(response.averageConfidence);
+        // Use the new heatmap processing service
+        const processedData = await HeatmapProcessingService.getProcessedHeatmapData();
+        
+        setModelResults(processedData.results);
+        setTotalDataPoints(processedData.totalCount);
+        setAverageConfidence(processedData.averageConfidence);
+        setProcessedCount(processedData.processedCount);
+        setRemovedCount(processedData.removedCount);
         
         // Calculate map center from actual data
-        const center = calculateMapCenter(response.results);
+        const center = calculateMapCenter(processedData.results);
         setMapCenter(center);
         
         setLastUpdated(new Date());
@@ -133,13 +147,38 @@ export default function HeatmapPage() {
     setError(null);
     
     try {
-      const response: ModelResultsResponse = await FirebaseService.fetchModelResults();
-      setModelResults(response.results);
-      setTotalDataPoints(response.totalCount);
-      setAverageConfidence(response.averageConfidence);
+      // Get stats before cleanup
+      const beforeStats = await AutomatedCleanupService.getCleanupStats();
+      
+      // Run automated cleanup first (in background)
+      const cleanupStats = await AutomatedCleanupService.performAutomaticCleanup();
+      
+      // Show cleanup notification if detections were removed
+      if (cleanupStats.removedDetections > 0) {
+        setCleanupNotification({
+          show: true,
+          message: `🧹 Cleanup completed! Removed ${cleanupStats.removedDetections} cleaned detection${cleanupStats.removedDetections > 1 ? 's' : ''} from database.`,
+          count: cleanupStats.removedDetections,
+          type: 'success'
+        });
+        
+        // Auto-hide notification after 5 seconds
+        setTimeout(() => {
+          setCleanupNotification(prev => ({ ...prev, show: false }));
+        }, 5000);
+      }
+      
+      // Use the new heatmap processing service
+      const processedData = await HeatmapProcessingService.getProcessedHeatmapData();
+      
+      setModelResults(processedData.results);
+      setTotalDataPoints(processedData.totalCount);
+      setAverageConfidence(processedData.averageConfidence);
+      setProcessedCount(processedData.processedCount);
+      setRemovedCount(processedData.removedCount);
       
       // Calculate map center from actual data
-      const center = calculateMapCenter(response.results);
+      const center = calculateMapCenter(processedData.results);
       setMapCenter(center);
       
       setLastUpdated(new Date());
@@ -155,7 +194,7 @@ export default function HeatmapPage() {
 
   const stats = [
     {
-      name: 'Total Data Points',
+      name: 'Active Points',
       value: totalDataPoints.toString(),
       icon: MapPin,
       color: 'text-blue-600',
@@ -177,6 +216,20 @@ export default function HeatmapPage() {
       color: 'text-red-600',
       bgColor: 'bg-red-50',
     },
+    {
+      name: 'Processed',
+      value: processedCount.toString(),
+      icon: Activity,
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50',
+    },
+    {
+      name: 'Cleaned Areas',
+      value: removedCount.toString(),
+      icon: MapPin,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+    },
   ];
 
   return (
@@ -186,17 +239,56 @@ export default function HeatmapPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Garbage Detection Heatmap</h1>
           <p className="text-gray-600 mt-1">
-            Live garbage detection intensity map from Firebase model results (auto-updates every 30s)
+            Live garbage detection intensity map with automated database cleanup (auto-updates every 30s)
           </p>
         </div>
-        <button
-          onClick={refreshData}
-          disabled={isLoading}
-          className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Refresh Data</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={async () => {
+              try {
+                const cleanupStats = await AutomatedCleanupService.performAutomaticCleanup();
+                if (cleanupStats.removedDetections > 0) {
+                  setCleanupNotification({
+                    show: true,
+                    message: `🧹 Manual cleanup completed! Removed ${cleanupStats.removedDetections} cleaned detection${cleanupStats.removedDetections > 1 ? 's' : ''} from database.`,
+                    count: cleanupStats.removedDetections,
+                    type: 'success'
+                  });
+                  setTimeout(() => {
+                    setCleanupNotification(prev => ({ ...prev, show: false }));
+                  }, 5000);
+                } else {
+                  setCleanupNotification({
+                    show: true,
+                    message: 'ℹ️ No cleaned detections found to remove.',
+                    count: 0,
+                    type: 'info'
+                  });
+                  setTimeout(() => {
+                    setCleanupNotification(prev => ({ ...prev, show: false }));
+                  }, 3000);
+                }
+                // Refresh data after cleanup
+                refreshData();
+              } catch (err) {
+                console.error('Manual cleanup failed:', err);
+              }
+            }}
+            disabled={isLoading}
+            className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+            <span>Clean Database</span>
+          </button>
+          <button
+            onClick={refreshData}
+            disabled={isLoading}
+            className="flex items-center space-x-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Refresh Data</span>
+          </button>
+        </div>
       </div>
 
       {/* Error Message */}
@@ -210,8 +302,43 @@ export default function HeatmapPage() {
         </div>
       )}
 
+      {/* Cleanup Notification */}
+      {cleanupNotification.show && (
+        <div className={`border rounded-lg p-4 flex items-center space-x-3 animate-in slide-in-from-top-2 duration-300 ${
+          cleanupNotification.type === 'success' 
+            ? 'bg-green-50 border-green-200' 
+            : 'bg-blue-50 border-blue-200'
+        }`}>
+          {cleanupNotification.type === 'success' ? (
+            <CheckCircle className="h-5 w-5 text-green-600" />
+          ) : (
+            <Trash2 className="h-5 w-5 text-blue-600" />
+          )}
+          <div className="flex-1">
+            <h3 className={`text-sm font-medium ${
+              cleanupNotification.type === 'success' ? 'text-green-800' : 'text-blue-800'
+            }`}>
+              Database Cleanup
+            </h3>
+            <p className={`text-sm mt-1 ${
+              cleanupNotification.type === 'success' ? 'text-green-700' : 'text-blue-700'
+            }`}>
+              {cleanupNotification.message}
+            </p>
+          </div>
+          <button
+            onClick={() => setCleanupNotification(prev => ({ ...prev, show: false }))}
+            className={`text-sm font-medium ${
+              cleanupNotification.type === 'success' ? 'text-green-600 hover:text-green-800' : 'text-blue-600 hover:text-blue-800'
+            }`}
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
         {stats.map((stat) => (
           <div key={stat.name} className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
             <div className="flex items-center">
@@ -232,7 +359,7 @@ export default function HeatmapPage() {
         <div className="p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Garbage Detection Map</h2>
           <p className="text-sm text-gray-600 mt-1">
-            Last updated: {lastUpdated.toLocaleTimeString()} • {totalDataPoints} detection points from Firestore
+            Last updated: {lastUpdated.toLocaleTimeString()} • {totalDataPoints} active points • {removedCount} areas cleaned
           </p>
         </div>
         
@@ -400,17 +527,19 @@ export default function HeatmapPage() {
           </div>
         </div>
         <p className="text-sm text-gray-500 mt-3">
-          The map shows garbage detection intensity levels from your Firebase data. 
-          Each colored circle represents a detection area with radius based on GPS accuracy (100-200m).
+          The map shows only active garbage detection points (confidence &gt; 0). 
+          When confidence scores become 0 (garbage cleaned), those points are automatically removed from the database.
+          Each colored circle represents an active detection area with radius based on GPS accuracy (100-200m).
           Red areas indicate high intensity detections, while green areas show lower intensity.
         </p>
         <div className="mt-4 p-3 bg-gray-50 rounded-lg">
           <h4 className="text-sm font-medium text-gray-900 mb-2">Map Features:</h4>
           <ul className="text-xs text-gray-600 space-y-1">
-            <li>• <strong>Colored Circles:</strong> Detection areas with intensity-based coloring</li>
+            <li>• <strong>Active Points:</strong> Only shows detections with confidence &gt; 0</li>
+            <li>• <strong>Auto Cleanup:</strong> Points with confidence = 0 are automatically removed from database</li>
             <li>• <strong>Circle Size:</strong> Based on GPS accuracy (100-200m radius)</li>
             <li>• <strong>Tooltips:</strong> Hover over circles to see confidence, accuracy, and address</li>
-            <li>• <strong>Popups:</strong> Click circles for detailed information</li>
+            <li>• <strong>Real-time:</strong> Updates every 30 seconds with latest processing</li>
           </ul>
         </div>
       </div>
