@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Plus, Search, Filter, MapPin, Phone, User, Clock, CheckCircle, AlertTriangle, RefreshCw } from 'lucide-react';
-import { SafaiKarmi } from '@/types/staff';
+import { Users, Plus, Search, Filter, MapPin, Phone, User, Clock, CheckCircle, AlertTriangle, RefreshCw, Briefcase, CheckSquare, Square, AlertCircle, X } from 'lucide-react';
+import { SafaiKarmi, AssignedWork } from '@/types/staff';
 import SafaiKarmiModal from '@/components/SafaiKarmiModal';
 import { FirebaseService } from '@/services/firebaseService';
+import { AssignmentService } from '@/services/assignmentService';
 import { runStaffMigration } from '@/scripts/migrateStaffData';
+import { db } from '@/lib/firebase';
 
 export default function StaffPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -17,22 +19,66 @@ export default function StaffPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
+  const [assignmentStats, setAssignmentStats] = useState({
+    totalAssignments: 0,
+    pendingAssignments: 0,
+    completedAssignments: 0,
+    staffWithWork: 0,
+    unassignedDetections: 0
+  });
+  const [selectedKarmiWork, setSelectedKarmiWork] = useState<AssignedWork[] | null>(null);
+  const [showWorkModal, setShowWorkModal] = useState(false);
 
   // Load staff data from Firebase
   useEffect(() => {
     loadStaffData();
   }, []);
 
+  // Auto-assign work when staff data loads
+  useEffect(() => {
+    if (karmis.length > 0) {
+      autoAssignWork();
+    }
+  }, [karmis.length]);
+
   const loadStaffData = async () => {
     try {
       setLoading(true);
       setError(null);
-      const staffData = await FirebaseService.fetchStaff();
-      setKarmis(staffData);
       
-      // If no data exists, show migration option
-      if (staffData.length === 0) {
-        setMigrationStatus('No staff data found. Click "Migrate Data" to add the initial staff members.');
+      // First try to load staff with assigned work
+      try {
+        const staffData = await AssignmentService.getStaffWithAssignedWork();
+        setKarmis(staffData);
+        
+        // Load assignment statistics
+        const stats = await AssignmentService.getAssignmentStats();
+        setAssignmentStats(stats);
+        
+        // If no data exists, show migration option
+        if (staffData.length === 0) {
+          setMigrationStatus('No staff data found. Click "Migrate Data" to add the initial staff members.');
+        }
+      } catch (assignmentError) {
+        console.warn('Assignment service failed, falling back to basic staff data:', assignmentError);
+        
+        // Fallback to basic staff data without assignments
+        const staffData = await FirebaseService.fetchStaff();
+        setKarmis(staffData);
+        
+        // Set default assignment stats
+        setAssignmentStats({
+          totalAssignments: 0,
+          pendingAssignments: 0,
+          completedAssignments: 0,
+          staffWithWork: 0,
+          unassignedDetections: 0
+        });
+        
+        // If no data exists, show migration option
+        if (staffData.length === 0) {
+          setMigrationStatus('No staff data found. Click "Migrate Data" to add the initial staff members.');
+        }
       }
     } catch (err) {
       console.error('Error loading staff data:', err);
@@ -74,6 +120,8 @@ export default function StaffPage() {
   const activeKarmis = karmis.filter(k => k.status === 'Active').length;
   const onLeaveKarmis = karmis.filter(k => k.status === 'On Leave').length;
   const totalCollections = karmis.reduce((sum, k) => sum + k.totalCollections, 0);
+  const totalAssignedWork = karmis.reduce((sum, k) => sum + (k.totalAssignedWork || 0), 0);
+  const pendingWork = karmis.reduce((sum, k) => sum + (k.pendingWork || 0), 0);
 
   const stats = [
     {
@@ -91,18 +139,18 @@ export default function StaffPage() {
       bgColor: 'bg-green-50',
     },
     {
-      name: 'On Leave',
-      value: onLeaveKarmis.toString(),
-      icon: AlertTriangle,
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-50',
+      name: 'Assigned Work',
+      value: totalAssignedWork.toString(),
+      icon: Briefcase,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
     },
     {
-      name: 'Total Collections',
-      value: totalCollections.toLocaleString(),
-      icon: Clock,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      name: 'Pending Work',
+      value: pendingWork.toString(),
+      icon: Square,
+      color: 'text-orange-600',
+      bgColor: 'bg-orange-50',
     },
   ];
 
@@ -147,6 +195,144 @@ export default function StaffPage() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedKarmi(null);
+  };
+
+  // Assigned work handlers
+  const handleViewAssignedWork = async (karmi: SafaiKarmi) => {
+    try {
+      setLoading(true);
+      const assignedWork = await AssignmentService.getAssignedWorkForStaff(karmi.id);
+      setSelectedKarmiWork(assignedWork);
+      setShowWorkModal(true);
+    } catch (err) {
+      console.error('Error loading assigned work:', err);
+      setError('Failed to load assigned work. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCloseWorkModal = () => {
+    setShowWorkModal(false);
+    setSelectedKarmiWork(null);
+  };
+
+  const handleUpdateWorkStatus = async (detectionId: string, status: 'pending' | 'in_progress' | 'completed' | 'cancelled') => {
+    try {
+      await AssignmentService.updateWorkStatus(detectionId, status);
+      // Reload data to reflect changes
+      await loadStaffData();
+      // Update the work modal if it's open
+      if (selectedKarmiWork) {
+        const updatedWork = selectedKarmiWork.map(work => 
+          work.detectionId === detectionId ? { ...work, status } : work
+        );
+        setSelectedKarmiWork(updatedWork);
+      }
+    } catch (err) {
+      console.error('Error updating work status:', err);
+      setError('Failed to update work status. Please try again.');
+    }
+  };
+
+  // Auto-assign work for unassigned detections
+  const autoAssignWork = async () => {
+    try {
+      console.log('🔄 Auto-assigning work for staff members...');
+      
+      // Get all unassigned detections
+      const unassignedDetections = await AssignmentService.getUnassignedDetections();
+      console.log(`Found ${unassignedDetections.length} unassigned detections`);
+      
+      if (unassignedDetections.length === 0) {
+        console.log('No unassigned detections found');
+        return;
+      }
+
+      // Get all staff members
+      const staffMembers = karmis.filter(k => k.status === 'Active');
+      console.log(`Found ${staffMembers.length} active staff members`);
+
+      if (staffMembers.length === 0) {
+        console.log('No active staff members found');
+        return;
+      }
+
+      let assignedCount = 0;
+
+      // Process each unassigned detection
+      for (const detectionId of unassignedDetections) {
+        try {
+          // Get detection details
+          const { doc, getDoc } = await import('firebase/firestore');
+          const detectionRef = doc(db, 'model_results', detectionId);
+          const detectionDoc = await getDoc(detectionRef);
+          
+          if (!detectionDoc.exists()) continue;
+          
+          const detectionData = detectionDoc.data();
+          const address = detectionData.location?.address || detectionData.address || '';
+          
+          if (!address) continue;
+          
+          const lowerAddress = address.toLowerCase();
+          console.log(`Processing detection: ${address}`);
+          
+          // Find matching staff member
+          let matchedStaff = null;
+          
+          for (const staff of staffMembers) {
+            if (!staff.workingArea) continue;
+            
+            const workingAreaWords = staff.workingArea
+              .toLowerCase()
+              .split(/\s+/)
+              .filter(word => word.length > 0);
+            
+            // Check if ALL words from working area are in the address
+            const allWordsMatch = workingAreaWords.every(word => 
+              lowerAddress.includes(word)
+            );
+            
+            if (allWordsMatch) {
+              matchedStaff = staff;
+              console.log(`✅ Matched staff ${staff.name} (${staff.workingArea}) for detection at ${address}`);
+              break;
+            }
+          }
+          
+          // Assign the detection to matched staff
+          if (matchedStaff) {
+            const { updateDoc } = await import('firebase/firestore');
+            await updateDoc(detectionRef, {
+              staffId: matchedStaff.id,
+              working_area: matchedStaff.workingArea,
+              assignedAt: new Date().toISOString(),
+              workStatus: 'pending'
+            });
+            
+            assignedCount++;
+            console.log(`✅ Assigned detection ${detectionId} to staff ${matchedStaff.name}`);
+          } else {
+            console.log(`❌ No matching staff found for detection at ${address}`);
+          }
+          
+        } catch (detectionError) {
+          console.error(`Error processing detection ${detectionId}:`, detectionError);
+        }
+      }
+      
+      if (assignedCount > 0) {
+        console.log(`🎉 Successfully assigned ${assignedCount} detections`);
+        // Reload staff data to show new assignments
+        await loadStaffData();
+      } else {
+        console.log('No assignments were made');
+      }
+      
+    } catch (error) {
+      console.error('Error in auto-assignment:', error);
+    }
   };
 
   // Save new karmi
@@ -222,6 +408,14 @@ export default function StaffPage() {
               Migrate Data
             </button>
           )}
+          <button 
+            onClick={autoAssignWork}
+            disabled={loading}
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+          >
+            <Briefcase className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Assign Work
+          </button>
           <button 
             onClick={handleAddKarmi}
             disabled={loading}
@@ -375,6 +569,12 @@ export default function StaffPage() {
                         <MapPin className="h-4 w-4 mr-1" />
                         {karmi.workingArea}
                       </div>
+                      {(karmi.totalAssignedWork || 0) > 0 && (
+                        <div className="flex items-center text-sm text-indigo-600">
+                          <Briefcase className="h-4 w-4 mr-1" />
+                          {karmi.totalAssignedWork} assigned
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -388,10 +588,25 @@ export default function StaffPage() {
                         ⭐ {karmi.rating}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-500">Last active: {karmi.lastActive}</p>
+                    <div className="flex items-center justify-end space-x-4 text-sm text-gray-500">
+                      <span>Last active: {karmi.lastActive}</span>
+                      {(karmi.pendingWork || 0) > 0 && (
+                        <span className="text-orange-600 font-medium">
+                          {karmi.pendingWork} pending
+                        </span>
+                      )}
+                    </div>
                     <p className="text-sm text-gray-500">Joined: {new Date(karmi.joinDate).toLocaleDateString()}</p>
                   </div>
                   <div className="flex space-x-2">
+                    {(karmi.totalAssignedWork || 0) > 0 && (
+                      <button 
+                        onClick={() => handleViewAssignedWork(karmi)}
+                        className="text-blue-600 hover:text-blue-900 text-sm font-medium"
+                      >
+                        View Work
+                      </button>
+                    )}
                     <button 
                       onClick={() => handleEditKarmi(karmi)}
                       className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
@@ -441,6 +656,87 @@ export default function StaffPage() {
         karmi={selectedKarmi}
         mode={modalMode}
       />
+
+      {/* Assigned Work Modal */}
+      {showWorkModal && selectedKarmiWork && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-md bg-white">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-medium text-gray-900">
+                Assigned Work ({selectedKarmiWork.length} tasks)
+              </h3>
+              <button
+                onClick={handleCloseWorkModal}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="space-y-4 max-h-96 overflow-y-auto">
+              {selectedKarmiWork.map((work) => (
+                <div key={work.detectionId} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-2">
+                        <MapPin className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-900">{work.address}</span>
+                        <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                          work.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          work.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
+                          work.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {work.status}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-500 space-y-1">
+                        <p>Confidence: {(work.confidenceScore * 100).toFixed(1)}%</p>
+                        <p>Assigned: {new Date(work.assignedAt).toLocaleString()}</p>
+                        <p>Location: {work.latitude.toFixed(4)}, {work.longitude.toFixed(4)}</p>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2 ml-4">
+                      {work.status === 'pending' && (
+                        <button
+                          onClick={() => handleUpdateWorkStatus(work.detectionId, 'in_progress')}
+                          className="px-3 py-1 text-xs font-medium text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100"
+                        >
+                          Start
+                        </button>
+                      )}
+                      {work.status === 'in_progress' && (
+                        <button
+                          onClick={() => handleUpdateWorkStatus(work.detectionId, 'completed')}
+                          className="px-3 py-1 text-xs font-medium text-green-600 bg-green-50 rounded-md hover:bg-green-100"
+                        >
+                          Complete
+                        </button>
+                      )}
+                      {(work.status === 'pending' || work.status === 'in_progress') && (
+                        <button
+                          onClick={() => handleUpdateWorkStatus(work.detectionId, 'cancelled')}
+                          className="px-3 py-1 text-xs font-medium text-red-600 bg-red-50 rounded-md hover:bg-red-100"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {selectedKarmiWork.length === 0 && (
+              <div className="text-center py-8">
+                <Briefcase className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No assigned work</h3>
+                <p className="text-gray-500">This staff member has no assigned work at the moment.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

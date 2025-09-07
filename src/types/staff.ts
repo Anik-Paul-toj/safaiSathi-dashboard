@@ -1,3 +1,14 @@
+// Assigned work interface
+export interface AssignedWork {
+  detectionId: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  confidenceScore: number;
+  assignedAt: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
+}
+
 // Safai Karmi (Worker) interface
 export interface SafaiKarmi {
   id: string;
@@ -9,6 +20,10 @@ export interface SafaiKarmi {
   lastActive: string;
   totalCollections: number;
   rating: number;
+  assignedWork?: AssignedWork[];
+  totalAssignedWork?: number;
+  completedWork?: number;
+  pendingWork?: number;
 }
 
 // Staff statistics interface

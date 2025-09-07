@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useRef, useState, useEffect } from 'react';
 import LocationIntelligence from '@/components/LocationIntelligence';
+import AssignmentStats from '@/components/AssignmentStats';
 import { FirebaseService } from '@/services/firebaseService';
 import { ModelResult } from '@/types/garbage-detection';
 
@@ -512,6 +513,9 @@ export default function DashboardPage() {
 
           {/* Location Intelligence */}
           <LocationIntelligence className="mb-8" />
+
+          {/* Assignment Statistics */}
+          <AssignmentStats className="mb-8" />
 
           {/* Detection Analytics */}
           <div className="mb-8">

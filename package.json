@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "test-assignment": "npx tsx src/scripts/test-assignment.ts",
-    "assign-cleaners": "npx tsx -e \"import('./src/scripts/assign-cleaner').then(m => m.assignCleanersToUnassigned())\""
+    "test-auto-assignment": "npx tsx src/scripts/test-auto-assignment.ts",
+    "assign-cleaners": "npx tsx -e \"import('./src/scripts/assign-cleaner').then(m => m.assignCleanersToUnassigned())\"",
+    "run-assignments": "npx tsx src/scripts/integrate-assignments.ts"
   },
   "dependencies": {
     "@types/leaflet": "^1.9.20",
