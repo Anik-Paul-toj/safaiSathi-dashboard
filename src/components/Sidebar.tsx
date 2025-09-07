@@ -11,7 +11,8 @@ import {
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Activity
+  Activity,
+  UserCheck
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,6 +24,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Heatmap', href: '/dashboard/heatmap', icon: Activity },
   { name: 'Staff', href: '/dashboard/staff', icon: Users },
+  { name: 'Citizens Reports', href: '/dashboard/citizens', icon: UserCheck },
 ];
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {

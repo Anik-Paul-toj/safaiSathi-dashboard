@@ -2,6 +2,7 @@ import { collection, getDocs, query, orderBy, limit, DocumentData, QueryDocument
 import { db } from '@/lib/firebase';
 import { ModelResult, ModelResultsResponse, AreaData } from '@/types/garbage-detection';
 import { SafaiKarmi } from '@/types/staff';
+import { Citizen, CitizenStats } from '@/types/citizen';
 
 export class FirebaseService {
   /**
@@ -474,6 +475,168 @@ export class FirebaseService {
     } catch (error) {
       console.error('Error migrating staff data:', error);
       throw new Error('Failed to migrate staff data to Firebase');
+    }
+  }
+
+  // ==================== CITIZEN MANAGEMENT ====================
+
+  /**
+   * Fetch all citizens from the civilian collection
+   */
+  static async fetchCitizens(): Promise<Citizen[]> {
+    try {
+      const citizensRef = collection(db, 'civilian');
+      const q = query(citizensRef, orderBy('timestamp', 'desc'));
+      
+      const querySnapshot = await getDocs(q);
+      const citizens: Citizen[] = [];
+      
+      querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+        const data = doc.data();
+        citizens.push({
+          id: doc.id,
+          name: data.name || 'Unknown',
+          imageUrl: data.imageUrl || '',
+          location: {
+            latitude: data.location?.latitude || 0,
+            longitude: data.location?.longitude || 0,
+            accuracy: data.location?.accuracy,
+            address: data.location?.address
+          },
+          description: data.description || '',
+          timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp),
+          status: data.status || 'pending',
+          email: data.email,
+          phone: data.phone,
+          area: data.area,
+          language: data.language || 'en',
+          notifications: data.notifications || true,
+          totalReports: data.totalReports || 0,
+          verifiedReports: data.verifiedReports || 0
+        });
+      });
+
+      return citizens;
+    } catch (error) {
+      console.error('Error fetching citizens:', error);
+      throw new Error('Failed to fetch citizens from Firebase');
+    }
+  }
+
+  /**
+   * Add a new citizen to the civilian collection
+   */
+  static async addCitizen(citizenData: Omit<Citizen, 'id'>): Promise<string> {
+    try {
+      const citizensRef = collection(db, 'civilian');
+      const docRef = await addDoc(citizensRef, {
+        ...citizenData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      return docRef.id;
+    } catch (error) {
+      console.error('Error adding citizen:', error);
+      throw new Error('Failed to add citizen to Firebase');
+    }
+  }
+
+  /**
+   * Update an existing citizen
+   */
+  static async updateCitizen(id: string, citizenData: Omit<Citizen, 'id'>): Promise<void> {
+    try {
+      const citizenDoc = doc(db, 'civilian', id);
+      await updateDoc(citizenDoc, {
+        ...citizenData,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error updating citizen:', error);
+      throw new Error('Failed to update citizen in Firebase');
+    }
+  }
+
+  /**
+   * Delete a citizen
+   */
+  static async deleteCitizen(id: string): Promise<void> {
+    try {
+      const citizenDoc = doc(db, 'civilian', id);
+      await deleteDoc(citizenDoc);
+    } catch (error) {
+      console.error('Error deleting citizen:', error);
+      throw new Error('Failed to delete citizen from Firebase');
+    }
+  }
+
+  /**
+   * Get a single citizen by ID
+   */
+  static async getCitizenById(id: string): Promise<Citizen | null> {
+    try {
+      const citizenDoc = doc(db, 'civilian', id);
+      const docSnap = await getDoc(citizenDoc);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          name: data.name || 'Unknown',
+          imageUrl: data.imageUrl || '',
+          location: {
+            latitude: data.location?.latitude || 0,
+            longitude: data.location?.longitude || 0,
+            accuracy: data.location?.accuracy,
+            address: data.location?.address
+          },
+          description: data.description || '',
+          timestamp: data.timestamp?.toDate ? data.timestamp.toDate() : new Date(data.timestamp),
+          status: data.status || 'pending',
+          email: data.email,
+          phone: data.phone,
+          area: data.area,
+          language: data.language || 'en',
+          notifications: data.notifications || true,
+          totalReports: data.totalReports || 0,
+          verifiedReports: data.verifiedReports || 0
+        };
+      } else {
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting citizen by ID:', error);
+      throw new Error('Failed to get citizen from Firebase');
+    }
+  }
+
+  /**
+   * Get citizen statistics
+   */
+  static async getCitizenStats(): Promise<CitizenStats> {
+    try {
+      const citizens = await this.fetchCitizens();
+      
+      const totalCitizens = citizens.length;
+      const pendingCitizens = citizens.filter(c => c.status === 'pending').length;
+      const inProgressCitizens = citizens.filter(c => c.status === 'in_progress').length;
+      const resolvedCitizens = citizens.filter(c => c.status === 'resolved').length;
+      const totalReports = citizens.reduce((sum, c) => sum + (c.totalReports || 0), 0);
+      const verifiedReports = citizens.reduce((sum, c) => sum + (c.verifiedReports || 0), 0);
+      const averageReportsPerCitizen = totalCitizens > 0 ? totalReports / totalCitizens : 0;
+
+      return {
+        totalCitizens,
+        pendingCitizens,
+        inProgressCitizens,
+        resolvedCitizens,
+        totalReports,
+        verifiedReports,
+        averageReportsPerCitizen
+      };
+    } catch (error) {
+      console.error('Error getting citizen stats:', error);
+      throw new Error('Failed to get citizen statistics from Firebase');
     }
   }
 }
