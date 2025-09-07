@@ -4,7 +4,7 @@
  */
 
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, deleteDoc, writeBatch, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, writeBatch } from 'firebase/firestore';
 
 export interface CleanupStats {
   totalProcessed: number;

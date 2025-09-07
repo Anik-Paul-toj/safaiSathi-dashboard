@@ -3,7 +3,7 @@
  * This script tests the assignment logic with real data
  */
 
-import { collection, getDocs, query, where, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface StaffMember {

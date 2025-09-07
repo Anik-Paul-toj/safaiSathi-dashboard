@@ -1,4 +1,4 @@
-import { collection, getDocs, query, where, orderBy, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
+import { collection, getDocs, where, DocumentData, QueryDocumentSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AssignedWork, SafaiKarmi } from '@/types/staff';
 

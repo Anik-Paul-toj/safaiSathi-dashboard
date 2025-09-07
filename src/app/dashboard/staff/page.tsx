@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Plus, Search, Filter, MapPin, Phone, User, Clock, CheckCircle, AlertTriangle, RefreshCw, Briefcase, CheckSquare, Square, AlertCircle, X } from 'lucide-react';
+import { Users, Plus, Search, Filter, MapPin, Phone, User, CheckCircle, AlertTriangle, RefreshCw, Briefcase, Square, X } from 'lucide-react';
 import { SafaiKarmi, AssignedWork } from '@/types/staff';
 import SafaiKarmiModal from '@/components/SafaiKarmiModal';
 import { FirebaseService } from '@/services/firebaseService';
@@ -19,7 +19,7 @@ export default function StaffPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [migrationStatus, setMigrationStatus] = useState<string | null>(null);
-  const [assignmentStats, setAssignmentStats] = useState({
+  const [, setAssignmentStats] = useState({
     totalAssignments: 0,
     pendingAssignments: 0,
     completedAssignments: 0,
@@ -39,7 +39,7 @@ export default function StaffPage() {
     if (karmis.length > 0) {
       autoAssignWork();
     }
-  }, [karmis.length]);
+  }, [karmis.length, autoAssignWork]);
 
   const loadStaffData = async () => {
     try {
@@ -118,8 +118,6 @@ export default function StaffPage() {
   // Calculate stats
   const totalKarmis = karmis.length;
   const activeKarmis = karmis.filter(k => k.status === 'Active').length;
-  const onLeaveKarmis = karmis.filter(k => k.status === 'On Leave').length;
-  const totalCollections = karmis.reduce((sum, k) => sum + k.totalCollections, 0);
   const totalAssignedWork = karmis.reduce((sum, k) => sum + (k.totalAssignedWork || 0), 0);
   const pendingWork = karmis.reduce((sum, k) => sum + (k.pendingWork || 0), 0);
 

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { UserCheck, Plus, Search, Filter, MapPin, Phone, User, Clock, CheckCircle, AlertTriangle, RefreshCw, Eye, Edit, Trash2, X, Image as ImageIcon } from 'lucide-react';
+import Image from 'next/image';
+import { UserCheck, Search, Filter, MapPin, Clock, CheckCircle, AlertTriangle, RefreshCw, Eye, Trash2, X, Image as ImageIcon } from 'lucide-react';
 import { Citizen } from '@/types/citizen';
 import { FirebaseService } from '@/services/firebaseService';
 
@@ -277,9 +278,11 @@ export default function CitizensPage() {
                     <div className="flex items-center">
                       <div className="flex-shrink-0 h-16 w-16">
                         {citizen.imageUrl ? (
-                          <img
+                          <Image
                             src={citizen.imageUrl}
                             alt={citizen.name}
+                            width={64}
+                            height={64}
                             className="h-16 w-16 rounded-lg object-cover"
                           />
                         ) : (
@@ -386,9 +389,11 @@ export default function CitizensPage() {
               {/* Citizen Image */}
               {selectedCitizen.imageUrl && (
                 <div className="flex justify-center">
-                  <img
+                  <Image
                     src={selectedCitizen.imageUrl}
                     alt={selectedCitizen.name}
+                    width={400}
+                    height={256}
                     className="max-w-full h-64 object-contain rounded-lg"
                   />
                 </div>

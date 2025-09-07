@@ -79,7 +79,7 @@ const formatTimeAgo = (timestamp: string): string => {
     
     const diffInDays = Math.floor(diffInHours / 24);
     return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-  } catch (_error) {
+  } catch {
     return 'Unknown time';
   }
 };

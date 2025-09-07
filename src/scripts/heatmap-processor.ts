@@ -23,7 +23,7 @@ interface DetectionDocument {
     address: string;
   };
   createdAt: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface ProcessedDetection {

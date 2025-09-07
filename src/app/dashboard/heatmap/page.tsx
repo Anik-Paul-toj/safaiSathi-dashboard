@@ -3,8 +3,7 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { MapPin, Activity, TrendingUp, RefreshCw, Map, Satellite, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
-import { ModelResult, ModelResultsResponse } from '@/types/garbage-detection';
-import { FirebaseService } from '@/services/firebaseService';
+import { ModelResult } from '@/types/garbage-detection';
 import { HeatmapProcessingService, ProcessedModelResult } from '@/services/heatmapProcessingService';
 import { AutomatedCleanupService } from '@/services/automatedCleanupService';
 
@@ -148,7 +147,7 @@ export default function HeatmapPage() {
     
     try {
       // Get stats before cleanup
-      const beforeStats = await AutomatedCleanupService.getCleanupStats();
+      await AutomatedCleanupService.getCleanupStats();
       
       // Run automated cleanup first (in background)
       const cleanupStats = await AutomatedCleanupService.performAutomaticCleanup();

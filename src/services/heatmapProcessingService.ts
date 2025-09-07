@@ -4,7 +4,7 @@
  */
 
 import { db } from '@/lib/firebase';
-import { collection, query, where, getDocs, doc, deleteDoc, orderBy, limit } from 'firebase/firestore';
+import { collection, query, getDocs } from 'firebase/firestore';
 import { ModelResult } from '@/types/garbage-detection';
 
 export interface ProcessedModelResult extends ModelResult {
@@ -15,9 +15,9 @@ export interface ProcessedModelResult extends ModelResult {
 /**
  * Check if any confidence score indicates garbage detection
  */
-function hasGarbageDetected(confidenceScores: number[]): boolean {
-  return confidenceScores.some(score => score > 0);
-}
+// function hasGarbageDetected(confidenceScores: number[]): boolean {
+//   return confidenceScores.some(score => score > 0);
+// }
 
 /**
  * Check if two coordinates are within the specified degree threshold
