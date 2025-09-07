@@ -33,6 +33,7 @@ interface ModelResultDocument {
 interface AssignmentData {
   staffId: string;
   working_area: string;
+  [key: string]: unknown;
 }
 
 /**
@@ -112,7 +113,7 @@ export async function assignCleaner(detectionId: string): Promise<boolean> {
         working_area: matchedStaff.working_area
       };
       
-      await detectionRef.update(assignmentData as Record<string, unknown>);
+      await detectionRef.update(assignmentData);
       console.log(`Successfully assigned staff ${matchedStaff.id} to detection ${detectionId}`);
       return true;
     } else {
