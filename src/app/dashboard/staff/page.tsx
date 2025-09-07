@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Users, Plus, Search, Filter, MapPin, Phone, User, CheckCircle, AlertTriangle, RefreshCw, Briefcase, Square, X } from 'lucide-react';
 import { SafaiKarmi, AssignedWork } from '@/types/staff';
 import SafaiKarmiModal from '@/components/SafaiKarmiModal';
@@ -28,6 +28,106 @@ export default function StaffPage() {
   });
   const [selectedKarmiWork, setSelectedKarmiWork] = useState<AssignedWork[] | null>(null);
   const [showWorkModal, setShowWorkModal] = useState(false);
+
+  // Auto-assign work for unassigned detections
+  const autoAssignWork = useCallback(async () => {
+    try {
+      console.log('🔄 Auto-assigning work for staff members...');
+      
+      // Get all unassigned detections
+      const unassignedDetections = await AssignmentService.getUnassignedDetections();
+      console.log(`Found ${unassignedDetections.length} unassigned detections`);
+      
+      if (unassignedDetections.length === 0) {
+        console.log('No unassigned detections found');
+        return;
+      }
+
+      // Get all staff members
+      const staffMembers = karmis.filter(k => k.status === 'Active');
+      console.log(`Found ${staffMembers.length} active staff members`);
+
+      if (staffMembers.length === 0) {
+        console.log('No active staff members found');
+        return;
+      }
+
+      let assignedCount = 0;
+
+      // Process each unassigned detection
+      for (const detectionId of unassignedDetections) {
+        try {
+          // Get detection details
+          const { doc, getDoc } = await import('firebase/firestore');
+          const detectionRef = doc(db, 'model_results', detectionId);
+          const detectionDoc = await getDoc(detectionRef);
+          
+          if (!detectionDoc.exists()) continue;
+          
+          const detectionData = detectionDoc.data();
+          const address = detectionData.location?.address || detectionData.address || '';
+          
+          if (!address) continue;
+          
+          const lowerAddress = address.toLowerCase();
+          console.log(`Processing detection: ${address}`);
+          
+          // Find matching staff member
+          let matchedStaff = null;
+          
+          for (const staff of staffMembers) {
+            if (!staff.workingArea) continue;
+            
+            const workingAreaWords = staff.workingArea
+              .toLowerCase()
+              .split(/\s+/)
+              .filter(word => word.length > 0);
+            
+            // Check if ALL words from working area are in the address
+            const allWordsMatch = workingAreaWords.every(word => 
+              lowerAddress.includes(word)
+            );
+            
+            if (allWordsMatch) {
+              matchedStaff = staff;
+              console.log(`✅ Matched staff ${staff.name} (${staff.workingArea}) for detection at ${address}`);
+              break;
+            }
+          }
+          
+          // Assign the detection to matched staff
+          if (matchedStaff) {
+            const { updateDoc } = await import('firebase/firestore');
+            await updateDoc(detectionRef, {
+              staffId: matchedStaff.id,
+              working_area: matchedStaff.workingArea,
+              assignedAt: new Date().toISOString(),
+              workStatus: 'pending'
+            });
+            
+            assignedCount++;
+            console.log(`✅ Assigned detection ${detectionId} to staff ${matchedStaff.name}`);
+          } else {
+            console.log(`❌ No matching staff found for detection at ${address}`);
+          }
+          
+        } catch (detectionError) {
+          console.error(`Error processing detection ${detectionId}:`, detectionError);
+        }
+      }
+      
+      if (assignedCount > 0) {
+        console.log(`🎉 Successfully assigned ${assignedCount} detections`);
+        // Reload staff data to show new assignments
+        await loadStaffData();
+      } else {
+        console.log('No assignments were made');
+      }
+      
+    } catch (error) {
+      console.error('Error in auto-assignment:', error);
+    }
+  }, [karmis]);
 
   // Load staff data from Firebase
   useEffect(() => {
@@ -233,105 +333,6 @@ export default function StaffPage() {
     }
   };
 
-  // Auto-assign work for unassigned detections
-  const autoAssignWork = async () => {
-    try {
-      console.log('🔄 Auto-assigning work for staff members...');
-      
-      // Get all unassigned detections
-      const unassignedDetections = await AssignmentService.getUnassignedDetections();
-      console.log(`Found ${unassignedDetections.length} unassigned detections`);
-      
-      if (unassignedDetections.length === 0) {
-        console.log('No unassigned detections found');
-        return;
-      }
-
-      // Get all staff members
-      const staffMembers = karmis.filter(k => k.status === 'Active');
-      console.log(`Found ${staffMembers.length} active staff members`);
-
-      if (staffMembers.length === 0) {
-        console.log('No active staff members found');
-        return;
-      }
-
-      let assignedCount = 0;
-
-      // Process each unassigned detection
-      for (const detectionId of unassignedDetections) {
-        try {
-          // Get detection details
-          const { doc, getDoc } = await import('firebase/firestore');
-          const detectionRef = doc(db, 'model_results', detectionId);
-          const detectionDoc = await getDoc(detectionRef);
-          
-          if (!detectionDoc.exists()) continue;
-          
-          const detectionData = detectionDoc.data();
-          const address = detectionData.location?.address || detectionData.address || '';
-          
-          if (!address) continue;
-          
-          const lowerAddress = address.toLowerCase();
-          console.log(`Processing detection: ${address}`);
-          
-          // Find matching staff member
-          let matchedStaff = null;
-          
-          for (const staff of staffMembers) {
-            if (!staff.workingArea) continue;
-            
-            const workingAreaWords = staff.workingArea
-              .toLowerCase()
-              .split(/\s+/)
-              .filter(word => word.length > 0);
-            
-            // Check if ALL words from working area are in the address
-            const allWordsMatch = workingAreaWords.every(word => 
-              lowerAddress.includes(word)
-            );
-            
-            if (allWordsMatch) {
-              matchedStaff = staff;
-              console.log(`✅ Matched staff ${staff.name} (${staff.workingArea}) for detection at ${address}`);
-              break;
-            }
-          }
-          
-          // Assign the detection to matched staff
-          if (matchedStaff) {
-            const { updateDoc } = await import('firebase/firestore');
-            await updateDoc(detectionRef, {
-              staffId: matchedStaff.id,
-              working_area: matchedStaff.workingArea,
-              assignedAt: new Date().toISOString(),
-              workStatus: 'pending'
-            });
-            
-            assignedCount++;
-            console.log(`✅ Assigned detection ${detectionId} to staff ${matchedStaff.name}`);
-          } else {
-            console.log(`❌ No matching staff found for detection at ${address}`);
-          }
-          
-        } catch (detectionError) {
-          console.error(`Error processing detection ${detectionId}:`, detectionError);
-        }
-      }
-      
-      if (assignedCount > 0) {
-        console.log(`🎉 Successfully assigned ${assignedCount} detections`);
-        // Reload staff data to show new assignments
-        await loadStaffData();
-      } else {
-        console.log('No assignments were made');
-      }
-      
-    } catch (error) {
-      console.error('Error in auto-assignment:', error);
-    }
-  };
 
   // Save new karmi
   const handleSaveKarmi = async (karmiData: Omit<SafaiKarmi, 'id'>) => {
