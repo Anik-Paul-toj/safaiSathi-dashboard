@@ -173,6 +173,9 @@ export interface ModelResult {
   timestamp: string;
   model_version?: string;
   image_url?: string;
+  status?: string; // CLEAN, LOW_OVERFLOW, HIGH_OVERFLOW, etc.
+  overflow_score?: number;
+  total_detections?: number;
 }
 
 // Raw Firebase document structure

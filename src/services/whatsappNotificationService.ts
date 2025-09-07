@@ -1,4 +1,5 @@
 import { SafaiKarmi, AssignedWork } from '@/types/staff';
+import { WhatsAppWebhookData, IncomingMessage } from '@/types/cloudinary';
 
 export interface WhatsAppConfig {
   accessToken: string;
@@ -225,7 +226,7 @@ Keep up the great work! 🌟
   /**
    * Process incoming webhook messages
    */
-  async processIncomingMessage(webhookData: any): Promise<void> {
+  async processIncomingMessage(webhookData: WhatsAppWebhookData): Promise<void> {
     try {
       const entry = webhookData.entry?.[0];
       const changes = entry?.changes?.[0];
@@ -244,7 +245,7 @@ Keep up the great work! 🌟
   /**
    * Handle incoming message from staff
    */
-  private async handleIncomingMessage(message: any): Promise<void> {
+  private async handleIncomingMessage(message: IncomingMessage): Promise<void> {
     try {
       const phoneNumber = message.from;
       const messageText = message.text?.body || '';

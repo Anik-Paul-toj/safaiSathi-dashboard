@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { UserCheck, Search, Filter, MapPin, Clock, CheckCircle, AlertTriangle, RefreshCw, Eye, Trash2, X, Image as ImageIcon } from 'lucide-react';
 import { Citizen } from '@/types/citizen';
 import { FirebaseService } from '@/services/firebaseService';
+import { CloudinaryAnalysis } from '@/types/cloudinary';
 
 export default function CitizensPage() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -14,6 +15,7 @@ export default function CitizensPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedCitizen, setSelectedCitizen] = useState<Citizen | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [cloudinaryAnalysis, setCloudinaryAnalysis] = useState<CloudinaryAnalysis[]>([]);
   const [stats, setStats] = useState({
     totalCitizens: 0,
     pendingCitizens: 0,
@@ -27,6 +29,7 @@ export default function CitizensPage() {
   // Load citizens data from Firebase
   useEffect(() => {
     loadCitizensData();
+    loadCloudinaryAnalysis();
   }, []);
 
   const loadCitizensData = async () => {
@@ -46,6 +49,15 @@ export default function CitizensPage() {
       setError('Failed to load citizens data. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCloudinaryAnalysis = async () => {
+    try {
+      const analysisData = await FirebaseService.fetchCloudinaryAnalysisResults();
+      setCloudinaryAnalysis(analysisData);
+    } catch (err) {
+      console.error('Error loading cloudinary analysis:', err);
     }
   };
 
@@ -386,19 +398,6 @@ export default function CitizensPage() {
             </div>
 
             <div className="space-y-6">
-              {/* Citizen Image */}
-              {selectedCitizen.imageUrl && (
-                <div className="flex justify-center">
-                  <Image
-                    src={selectedCitizen.imageUrl}
-                    alt={selectedCitizen.name}
-                    width={400}
-                    height={256}
-                    className="max-w-full h-64 object-contain rounded-lg"
-                  />
-                </div>
-              )}
-
               {/* Citizen Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
@@ -439,6 +438,91 @@ export default function CitizensPage() {
                 <h4 className="text-sm font-medium text-gray-500">Description</h4>
                 <p className="mt-1 text-sm text-gray-900">{selectedCitizen.description}</p>
               </div>
+
+              {/* Cloudinary Analysis Results */}
+              {cloudinaryAnalysis.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-3">AI Analysis Results</h4>
+                  <div className="space-y-3">
+                    {cloudinaryAnalysis.slice(0, 3).map((analysis, index) => (
+                      <div key={analysis.id || index} className="bg-gray-50 p-4 rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <h5 className="text-sm font-medium text-gray-900">
+                            Analysis #{index + 1}
+                          </h5>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 text-xs font-semibold rounded ${
+                              analysis.status === 'CLEAN' ? 'bg-green-100 text-green-800' :
+                              analysis.status === 'LOW_OVERFLOW' ? 'bg-yellow-100 text-yellow-800' :
+                              analysis.status === 'HIGH_OVERFLOW' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {analysis.status}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(analysis.timestamp).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 mb-3">
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">Detection Count:</p>
+                            <p className="text-sm font-medium">{analysis.detection_count}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">Avg Confidence:</p>
+                            <p className="text-sm font-medium">{analysis.average_confidence ? (analysis.average_confidence * 100).toFixed(1) : 'N/A'}%</p>
+                          </div>
+                        </div>
+                        
+                        {analysis.confidence_scores && analysis.confidence_scores.length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-xs text-gray-600 mb-1">Confidence Scores:</p>
+                            <div className="flex space-x-2">
+                              {analysis.confidence_scores.map((score: number, i: number) => (
+                                <span 
+                                  key={i}
+                                  className={`px-2 py-1 text-xs rounded ${
+                                    score > 0.7 ? 'bg-green-100 text-green-800' :
+                                    score > 0.4 ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}
+                                >
+                                  {(score * 100).toFixed(1)}%
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {analysis.detection_details && analysis.detection_details.length > 0 && (
+                          <div className="mb-2">
+                            <p className="text-xs text-gray-600 mb-1">Detection Details:</p>
+                            <div className="space-y-1">
+                              {analysis.detection_details.map((detail, i: number) => (
+                                <div key={i} className="text-xs bg-white p-2 rounded border">
+                                  <div className="flex justify-between">
+                                    <span className="font-medium">{detail.class_name}</span>
+                                    <span className="text-gray-600">{(detail.confidence * 100).toFixed(1)}%</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {cloudinaryAnalysis.length > 3 && (
+                    <p className="text-xs text-gray-500 mt-2">
+                      Showing 3 of {cloudinaryAnalysis.length} analysis results
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">

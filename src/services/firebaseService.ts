@@ -3,6 +3,7 @@ import { db } from '@/lib/firebase';
 import { ModelResult, ModelResultsResponse, AreaData } from '@/types/garbage-detection';
 import { SafaiKarmi } from '@/types/staff';
 import { Citizen, CitizenStats } from '@/types/citizen';
+import { CloudinaryAnalysis } from '@/types/cloudinary';
 
 export class FirebaseService {
   /**
@@ -11,7 +12,7 @@ export class FirebaseService {
   static async fetchModelResults(): Promise<ModelResultsResponse> {
     try {
       const modelResultsRef = collection(db, 'model_results');
-      const q = query(modelResultsRef, orderBy('createdAt', 'desc'));
+      const q = query(modelResultsRef, orderBy('timestamp', 'desc'));
       
       const querySnapshot = await getDocs(q);
       const results: ModelResult[] = [];
@@ -19,30 +20,28 @@ export class FirebaseService {
       querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
         const data = doc.data();
         
-        // Extract location object fields
-        const location = data.location || {};
+        // Extract GPS location object fields
+        const gpsLocation = data.gps_location || {};
+        const detectionSummary = data.detection_summary || {};
         
-        // Handle confidence_scores array - calculate average if it's an array
-        let confidenceScore = 0;
-        if (data.confidence_scores && Array.isArray(data.confidence_scores)) {
-          // Calculate average of confidence_scores array
-          const sum = data.confidence_scores.reduce((acc: number, score: number) => acc + score, 0);
-          confidenceScore = data.confidence_scores.length > 0 ? sum / data.confidence_scores.length : 0;
-        } else if (data.confidence_score) {
-          // Fallback to single confidence_score if array doesn't exist
-          confidenceScore = data.confidence_score;
-        }
+        // Use detection summary for confidence score
+        const confidenceScore = detectionSummary.average_confidence || 0;
         
         results.push({
           id: doc.id,
-          latitude: location.latitude || data.latitude || 0,
-          longitude: location.longitude || data.longitude || 0,
+          latitude: gpsLocation.latitude || 0,
+          longitude: gpsLocation.longitude || 0,
           confidence_score: confidenceScore,
-          accuracy: location.accuracy || data.accuracy || 0,
-          address: location.address || data.address || 'Unknown Address',
-          timestamp: data.createdAt || data.timestamp || new Date().toISOString(),
-          model_version: data.model_version,
-          image_url: data.image_url
+          accuracy: typeof gpsLocation.accuracy === 'string' ? 
+            parseFloat(gpsLocation.accuracy.replace(/[^\d.]/g, '')) : 
+            (gpsLocation.accuracy || 0),
+          address: gpsLocation.address || 'Unknown Address',
+          timestamp: data.timestamp || data.saved_at || new Date().toISOString(),
+          model_version: data.source || 'unknown',
+          image_url: data.image_url,
+          status: detectionSummary.status || 'UNKNOWN',
+          overflow_score: detectionSummary.overflow_score || 0,
+          total_detections: detectionSummary.total_detections || 0
         });
       });
 
@@ -50,7 +49,6 @@ export class FirebaseService {
       const averageConfidence = results.length > 0 
         ? results.reduce((sum, result) => sum + result.confidence_score, 0) / results.length
         : 0;
-
 
       return {
         results,
@@ -637,6 +635,86 @@ export class FirebaseService {
     } catch (error) {
       console.error('Error getting citizen stats:', error);
       throw new Error('Failed to get citizen statistics from Firebase');
+    }
+  }
+
+  // ==================== CLOUDINARY ANALYSIS RESULTS ====================
+
+  /**
+   * Fetch citizen report details from cloudinary_analysis_results collection
+   */
+  static async fetchCloudinaryAnalysisResults(): Promise<CloudinaryAnalysis[]> {
+    try {
+      const cloudinaryRef = collection(db, 'cloudinary_analysis_results');
+      const q = query(cloudinaryRef, orderBy('timestamp', 'desc'));
+      
+      const querySnapshot = await getDocs(q);
+      const results: CloudinaryAnalysis[] = [];
+      
+      querySnapshot.forEach((doc: QueryDocumentSnapshot<DocumentData>) => {
+        const data = doc.data();
+        results.push({
+          id: doc.id,
+          imageId: data.imageId,
+          imageUrl: data.imageUrl,
+          status: data.status,
+          confidence_scores: data.confidence_scores || [],
+          detection_details: data.detection_details || [],
+          detection_count: data.detection_count || 0,
+          average_confidence: data.average_confidence || 0,
+          max_confidence: data.max_confidence || 0,
+          min_confidence: data.min_confidence || 0,
+          timestamp: data.timestamp || data.saved_at || new Date().toISOString(),
+          saved_at: data.saved_at,
+          source: data.source
+        });
+      });
+
+      return results;
+    } catch (error) {
+      console.error('Error fetching cloudinary analysis results:', error);
+      throw new Error('Failed to fetch cloudinary analysis results from Firebase');
+    }
+  }
+
+  /**
+   * Get cloudinary analysis result by ID
+   */
+  static async getCloudinaryAnalysisById(id: string): Promise<CloudinaryAnalysis | null> {
+    try {
+      const cloudinaryDoc = doc(db, 'cloudinary_analysis_results', id);
+      const docSnap = await getDoc(cloudinaryDoc);
+      
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          createdAt: data.createdAt || new Date().toISOString(),
+          timestamp: data.timestamp || data.createdAt || new Date().toISOString()
+        };
+      } else {
+        return null;
+      }
+    } catch (error) {
+      console.error('Error getting cloudinary analysis by ID:', error);
+      throw new Error('Failed to get cloudinary analysis from Firebase');
+    }
+  }
+
+  /**
+   * Update cloudinary analysis result status
+   */
+  static async updateCloudinaryAnalysisStatus(id: string, status: string): Promise<void> {
+    try {
+      const cloudinaryDoc = doc(db, 'cloudinary_analysis_results', id);
+      await updateDoc(cloudinaryDoc, {
+        status: status,
+        updatedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error updating cloudinary analysis status:', error);
+      throw new Error('Failed to update cloudinary analysis status in Firebase');
     }
   }
 }
