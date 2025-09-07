@@ -8,7 +8,6 @@ import {
   X, 
   Home, 
   Users, 
-  Settings, 
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -24,7 +23,6 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: Home },
   { name: 'Heatmap', href: '/dashboard/heatmap', icon: Activity },
   { name: 'Staff', href: '/dashboard/staff', icon: Users },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
