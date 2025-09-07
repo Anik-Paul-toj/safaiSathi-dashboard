@@ -177,7 +177,7 @@ export default function SafaiKarmiModal({
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               disabled={isViewMode}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-black text-black ${
                 errors.name ? 'border-red-300' : 'border-gray-300'
               } ${isViewMode ? 'bg-gray-50' : 'bg-white'}`}
               placeholder="Enter full name"
@@ -201,7 +201,7 @@ export default function SafaiKarmiModal({
               value={formData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
               disabled={isViewMode}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-black text-black ${
                 errors.phone ? 'border-red-300' : 'border-gray-300'
               } ${isViewMode ? 'bg-gray-50' : 'bg-white'}`}
               placeholder="Enter phone number"
@@ -224,7 +224,7 @@ export default function SafaiKarmiModal({
               value={formData.workingArea}
               onChange={(e) => handleInputChange('workingArea', e.target.value)}
               disabled={isViewMode}
-              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+              className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-black text-black ${
                 errors.workingArea ? 'border-red-300' : 'border-gray-300'
               } ${isViewMode ? 'bg-gray-50' : 'bg-white'}`}
             >
@@ -275,7 +275,7 @@ export default function SafaiKarmiModal({
                 value={formData.joinDate}
                 onChange={(e) => handleInputChange('joinDate', e.target.value)}
                 disabled={isViewMode}
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-black text-black ${
                   errors.joinDate ? 'border-red-300' : 'border-gray-300'
                 } ${isViewMode ? 'bg-gray-50' : 'bg-white'}`}
               />
@@ -301,7 +301,7 @@ export default function SafaiKarmiModal({
                 onChange={(e) => handleInputChange('totalCollections', parseInt(e.target.value) || 0)}
                 disabled={isViewMode}
                 min="0"
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-black text-black ${
                   isViewMode ? 'bg-gray-50' : 'bg-white'
                 } border-gray-300`}
               />
@@ -321,7 +321,7 @@ export default function SafaiKarmiModal({
                 min="1"
                 max="5"
                 step="0.1"
-                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                className={`w-full px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 placeholder:text-black text-black ${
                   errors.rating ? 'border-red-300' : 'border-gray-300'
                 } ${isViewMode ? 'bg-gray-50' : 'bg-white'}`}
               />
