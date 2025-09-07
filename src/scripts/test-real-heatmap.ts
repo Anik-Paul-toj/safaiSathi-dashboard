@@ -41,7 +41,7 @@ async function testRealDataProcessing() {
       });
       
     } catch (error) {
-      console.log(`❌ Error processing ${detectionId}:`, error.message);
+      console.log(`❌ Error processing ${detectionId}:`, error instanceof Error ? error.message : String(error));
     }
     
     console.log(''); // Empty line for readability
@@ -66,10 +66,11 @@ async function getActualDetectionIds() {
       return [];
     }
     
-    const detectionIds = [];
+    const detectionIds: string[] = [];
     console.log('📋 Found detections:');
     
-    snapshot.forEach((doc, index) => {
+    let index = 0;
+    snapshot.forEach((doc) => {
       const data = doc.data();
       const confidenceScores = data.confidence_scores || [];
       const hasGarbage = confidenceScores.some((score: number) => score > 0);
@@ -82,12 +83,13 @@ async function getActualDetectionIds() {
       console.log('');
       
       detectionIds.push(doc.id);
+      index++;
     });
     
     return detectionIds;
     
   } catch (error) {
-    console.error('❌ Error getting detection IDs:', error.message);
+    console.error('❌ Error getting detection IDs:', error instanceof Error ? error.message : String(error));
     return [];
   }
 }
@@ -134,7 +136,7 @@ async function processActualDetections() {
       processed++;
       
     } catch (error) {
-      console.log(`❌ Error: ${error.message}`);
+      console.log(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
     }
     
     console.log(''); // Empty line

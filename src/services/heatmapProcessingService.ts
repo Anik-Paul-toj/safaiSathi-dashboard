@@ -4,7 +4,7 @@
  */
 
 import { db } from '@/lib/firebase';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, orderBy } from 'firebase/firestore';
 import { ModelResult } from '@/types/garbage-detection';
 
 export interface ProcessedModelResult extends ModelResult {
@@ -77,7 +77,7 @@ export class HeatmapProcessingService {
         };
         
         // If all confidence scores are 0, don't show on heatmap at all
-        if (confidenceScores.every(score => score === 0)) {
+        if (confidenceScores.every((score: number) => score === 0)) {
           result.action = 'ignored';
           console.log(`🔍 Found cleaned detection: ${doc.id} at ${result.address} - will not show on heatmap`);
           
